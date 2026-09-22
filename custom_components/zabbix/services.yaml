@@ -1,0 +1,85 @@
+acknowledge_problem:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: zabbix
+    event_id:
+      required: true
+      example: "123456"
+      selector:
+        text:
+          multiple: true
+    message:
+      selector:
+        text:
+          multiline: true
+
+unacknowledge_problem:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: zabbix
+    event_id:
+      required: true
+      example: "123456"
+      selector:
+        text:
+          multiple: true
+    message:
+      selector:
+        text:
+          multiline: true
+
+close_problem:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: zabbix
+    event_id:
+      required: true
+      example: "123456"
+      selector:
+        text:
+          multiple: true
+    message:
+      selector:
+        text:
+          multiline: true
+
+start_maintenance:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: zabbix
+          multiple: true
+    duration:
+      required: true
+      default:
+        hours: 1
+      selector:
+        duration:
+    collect_data:
+      default: true
+      selector:
+        boolean:
+    description:
+      selector:
+        text:
+          multiline: true
+
+end_maintenance:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: zabbix
+          multiple: true

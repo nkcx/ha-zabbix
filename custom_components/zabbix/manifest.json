@@ -1,0 +1,12 @@
+{
+  "domain": "zabbix",
+  "name": "Zabbix",
+  "codeowners": ["@nkcx"],
+  "config_flow": true,
+  "documentation": "https://github.com/nkcx/ha-zabbix",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/nkcx/ha-zabbix/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

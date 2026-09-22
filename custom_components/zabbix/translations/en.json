@@ -1,0 +1,379 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Zabbix",
+        "description": "Connect to a Zabbix 7.0 or newer server using an API token. See the documentation for how to create a dedicated read-only user and token.",
+        "data": {
+          "url": "URL",
+          "api_token": "API token",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "url": "The address of the Zabbix web interface, for example https://zabbix.example.com/zabbix/",
+          "api_token": "Created in Zabbix under User settings → API tokens (or Users → API tokens).",
+          "verify_ssl": "Turn off only for servers with a self-signed certificate."
+        }
+      },
+      "select_groups": {
+        "title": "Host groups",
+        "description": "Each monitored host in the selected groups becomes a device in Home Assistant, with its availability, problems and maintenance status.",
+        "data": {
+          "group_ids": "Host groups"
+        }
+      },
+      "select_items": {
+        "title": "Items",
+        "description": "Choose which Zabbix items (checks) become entities.\n\n- **Zabbix server + tagged**: the Zabbix server's own statistics (version, hosts, items, values per second, queue, caches) plus every item carrying the tag below.\n- **Tagged only**: only items carrying the tag below. Add the tag to items, item prototypes or templates in Zabbix.\n- **All items**: every item on every selected host.\n\n⚠️ **All items** can create a very large number of entities. A fully templated Zabbix host commonly has hundreds, sometimes thousands, of items, because discovery rules (filesystems, interfaces, services, containers…) create one item per discovered object. Only choose it if you know what you are doing.",
+        "data": {
+          "item_mode": "Items to import",
+          "tag": "Tag name"
+        },
+        "data_description": {
+          "tag": "Items with a tag of this name (any value) become entities."
+        }
+      },
+      "confirm_all": {
+        "title": "Import all items?",
+        "description": "⚠️ The selected host groups contain **{hosts}** hosts with **{items}** enabled items. The largest host, {largest_host}, has {largest_count} items.\n\nEvery item becomes an enabled entity that is polled and recorded by Home Assistant. This can slow Home Assistant down and grow its database quickly.",
+        "data": {
+          "confirm": "I understand this will create an entity for every item"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Zabbix",
+        "description": "The API token for {url} is no longer valid. Enter a new one.",
+        "data": {
+          "api_token": "API token"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Zabbix",
+        "description": "Change the address of the Zabbix server. It must be the same Zabbix installation.",
+        "data": {
+          "url": "URL",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "url": "The address of the Zabbix web interface."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Zabbix server.",
+      "ssl_error": "The SSL certificate could not be verified.",
+      "invalid_url": "No Zabbix API was found at this address.",
+      "invalid_auth": "The API token is invalid, disabled or expired.",
+      "no_api_access": "The token's user is not allowed to use the Zabbix API.",
+      "unsupported_version": "Zabbix {version} is not supported; version 7.0 or newer is required.",
+      "api_error": "Zabbix returned an error: {error}",
+      "different_server": "None of the configured host groups exist on this server. Is it the same Zabbix installation?",
+      "confirm_required": "Confirm to continue, or go back and choose a different mode.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This Zabbix server is already configured.",
+      "cannot_connect": "Failed to connect to the Zabbix server.",
+      "reauth_successful": "Reauthentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zabbix options",
+        "description": "⚠️ **All items** can create a very large number of entities: a fully templated host commonly has hundreds, sometimes thousands, of items. Prefer tagging the items you want.",
+        "data": {
+          "group_ids": "Host groups",
+          "scan_interval": "Update interval",
+          "item_mode": "Items to import",
+          "tag": "Tag name"
+        },
+        "data_description": {
+          "group_ids": "Each monitored host in these groups becomes a device.",
+          "scan_interval": "How often to poll Zabbix for values and problems.",
+          "tag": "Items with a tag of this name (any value) become entities."
+        }
+      },
+      "confirm_all": {
+        "title": "Import all items?",
+        "description": "⚠️ The selected host groups contain **{hosts}** hosts with **{items}** enabled items. The largest host, {largest_host}, has {largest_count} items.\n\nEvery item becomes an enabled entity that is polled and recorded by Home Assistant. This can slow Home Assistant down and grow its database quickly.",
+        "data": {
+          "confirm": "I understand this will create an entity for every item"
+        }
+      }
+    },
+    "error": {
+      "confirm_required": "Confirm to continue, or go back and choose a different mode."
+    },
+    "abort": {
+      "cannot_connect": "Failed to connect to the Zabbix server."
+    }
+  },
+  "selector": {
+    "item_mode": {
+      "options": {
+        "server_and_tagged": "Zabbix server + tagged items",
+        "tagged": "Tagged items only",
+        "all": "All items (not recommended for most installations)"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem",
+        "state_attributes": {
+          "count": { "name": "Count" },
+          "problems": { "name": "Problems" },
+          "not_classified": { "name": "Not classified" },
+          "information": { "name": "Information" },
+          "warning": { "name": "Warning" },
+          "average": { "name": "Average" },
+          "high": { "name": "High" },
+          "disaster": { "name": "Disaster" }
+        }
+      },
+      "maintenance": {
+        "name": "Maintenance"
+      }
+    },
+    "event": {
+      "problem_events": {
+        "name": "Problem events",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "problem": "Problem",
+              "resolved": "Resolved",
+              "acknowledged": "Acknowledged",
+              "unacknowledged": "Unacknowledged",
+              "severity_changed": "Severity changed",
+              "suppressed": "Suppressed",
+              "unsuppressed": "Unsuppressed"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "problems": {
+        "name": "Problems",
+        "unit_of_measurement": "problems",
+        "state_attributes": {
+          "problems": { "name": "Problems" },
+          "suppressed": { "name": "Suppressed" },
+          "symptoms": { "name": "Symptoms" },
+          "not_classified": { "name": "Not classified" },
+          "information": { "name": "Information" },
+          "warning": { "name": "Warning" },
+          "average": { "name": "Average" },
+          "high": { "name": "High" },
+          "disaster": { "name": "Disaster" }
+        }
+      },
+      "version": {
+        "name": "Version"
+      },
+      "hosts": {
+        "name": "Hosts",
+        "unit_of_measurement": "hosts"
+      },
+      "items": {
+        "name": "Items",
+        "unit_of_measurement": "items"
+      },
+      "unsupported_items": {
+        "name": "Not supported items",
+        "unit_of_measurement": "items"
+      },
+      "triggers": {
+        "name": "Triggers",
+        "unit_of_measurement": "triggers"
+      },
+      "highest_severity": {
+        "name": "Highest problem severity",
+        "state": {
+          "none": "None",
+          "not_classified": "Not classified",
+          "information": "Information",
+          "warning": "Warning",
+          "average": "Average",
+          "high": "High",
+          "disaster": "Disaster"
+        }
+      },
+      "availability_agent": {
+        "name": "Agent availability",
+        "state": {
+          "available": "Available",
+          "not_available": "Not available",
+          "unknown": "Unknown",
+          "mixed": "Mixed"
+        },
+        "state_attributes": {
+          "interfaces": { "name": "Interfaces" }
+        }
+      },
+      "availability_snmp": {
+        "name": "SNMP availability",
+        "state": {
+          "available": "Available",
+          "not_available": "Not available",
+          "unknown": "Unknown",
+          "mixed": "Mixed"
+        },
+        "state_attributes": {
+          "interfaces": { "name": "Interfaces" }
+        }
+      },
+      "availability_ipmi": {
+        "name": "IPMI availability",
+        "state": {
+          "available": "Available",
+          "not_available": "Not available",
+          "unknown": "Unknown",
+          "mixed": "Mixed"
+        },
+        "state_attributes": {
+          "interfaces": { "name": "Interfaces" }
+        }
+      },
+      "availability_jmx": {
+        "name": "JMX availability",
+        "state": {
+          "available": "Available",
+          "not_available": "Not available",
+          "unknown": "Unknown",
+          "mixed": "Mixed"
+        },
+        "state_attributes": {
+          "interfaces": { "name": "Interfaces" }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "The Zabbix API token is invalid, disabled or expired."
+    },
+    "update_failed": {
+      "message": "Error communicating with Zabbix: {error}"
+    },
+    "unsupported_version": {
+      "message": "Zabbix {version} is not supported; version 7.0 or newer is required."
+    },
+    "entry_not_found": {
+      "message": "Zabbix config entry {entry_id} was not found."
+    },
+    "entry_not_loaded": {
+      "message": "{title} is not loaded."
+    },
+    "not_a_host": {
+      "message": "Device {device_id} is not a Zabbix host."
+    },
+    "permission_denied": {
+      "message": "The Zabbix user does not have permission for this action: {error}"
+    },
+    "api_error": {
+      "message": "Zabbix returned an error: {error}"
+    },
+    "cannot_connect": {
+      "message": "Failed to connect to Zabbix: {error}"
+    }
+  },
+  "issues": {
+    "missing_groups": {
+      "title": "Zabbix host groups were removed",
+      "description": "{count} of the host groups selected for {title} no longer exist in Zabbix. Open the integration's options to review the host group selection."
+    }
+  },
+  "services": {
+    "acknowledge_problem": {
+      "name": "Acknowledge problem",
+      "description": "Acknowledges one or more Zabbix problems.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Zabbix server",
+          "description": "The Zabbix server the problems belong to."
+        },
+        "event_id": {
+          "name": "Event ID",
+          "description": "The problem's event ID (see the problem events and problem attributes)."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Optional message added to the problem."
+        }
+      }
+    },
+    "unacknowledge_problem": {
+      "name": "Unacknowledge problem",
+      "description": "Removes the acknowledgement from one or more Zabbix problems.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Zabbix server",
+          "description": "The Zabbix server the problems belong to."
+        },
+        "event_id": {
+          "name": "Event ID",
+          "description": "The problem's event ID."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Optional message added to the problem."
+        }
+      }
+    },
+    "close_problem": {
+      "name": "Close problem",
+      "description": "Manually closes one or more Zabbix problems. The trigger must allow manual close.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Zabbix server",
+          "description": "The Zabbix server the problems belong to."
+        },
+        "event_id": {
+          "name": "Event ID",
+          "description": "The problem's event ID."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Optional message added to the problem."
+        }
+      }
+    },
+    "start_maintenance": {
+      "name": "Start maintenance",
+      "description": "Puts Zabbix hosts into a one-time maintenance period starting now.",
+      "fields": {
+        "device_id": {
+          "name": "Hosts",
+          "description": "The Zabbix host devices."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long the maintenance lasts."
+        },
+        "collect_data": {
+          "name": "Collect data",
+          "description": "Keep collecting data during maintenance (problems are suppressed)."
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional description of the maintenance period."
+        }
+      }
+    },
+    "end_maintenance": {
+      "name": "End maintenance",
+      "description": "Ends maintenance periods started from Home Assistant for these hosts. Maintenance created in Zabbix itself is not changed.",
+      "fields": {
+        "device_id": {
+          "name": "Hosts",
+          "description": "The Zabbix host devices."
+        }
+      }
+    }
+  }
+}

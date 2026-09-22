@@ -1,0 +1,193 @@
+# serializer version: 1
+# name: test_device_diagnostics
+  dict({
+    'host': dict({
+      'availability': dict({
+        'agent': 'UNAVAILABLE',
+        'snmp': 'AVAILABLE',
+      }),
+      'host_id': '10501',
+      'in_maintenance': False,
+      'interfaces': list([
+        dict({
+          'available': 'UNAVAILABLE',
+          'error': 'Get value from agent failed: cannot connect',
+          'main': True,
+          'type': 'AGENT',
+        }),
+        dict({
+          'available': 'AVAILABLE',
+          'error': '',
+          'main': True,
+          'type': 'SNMP',
+        }),
+      ]),
+    }),
+    'items': list([
+      dict({
+        'enabled_by_default': True,
+        'key': 'system.cpu.util',
+        'name': 'Linux: CPU utilization',
+        'units': '%',
+        'value': dict({
+          'error': '',
+          'item_id': '25000',
+          'last_clock': 0,
+          'last_value': '',
+          'supported': True,
+        }),
+        'value_map': None,
+        'value_type': 'FLOAT',
+      }),
+    ]),
+    'problems': list([
+      dict({
+        'acknowledged': True,
+        'event_id': '901',
+        'severity': 'AVERAGE',
+        'suppressed': False,
+        'symptom': False,
+      }),
+      dict({
+        'acknowledged': False,
+        'event_id': '902',
+        'severity': 'DISASTER',
+        'suppressed': True,
+        'symptom': False,
+      }),
+      dict({
+        'acknowledged': False,
+        'event_id': '903',
+        'severity': 'WARNING',
+        'suppressed': False,
+        'symptom': True,
+      }),
+    ]),
+  })
+# ---
+# name: test_device_diagnostics.1
+  dict({
+    'items': list([
+      dict({
+        'enabled_by_default': True,
+        'key': 'zabbix[wcache,values]',
+        'name': 'Zabbix server: Number of processed values per second',
+        'units': '',
+        'value': dict({
+          'error': '',
+          'item_id': '23000',
+          'last_clock': 1784000000,
+          'last_value': '12.5',
+          'supported': True,
+        }),
+        'value_map': None,
+        'value_type': 'FLOAT',
+      }),
+      dict({
+        'enabled_by_default': True,
+        'key': 'zabbix[queue]',
+        'name': 'Zabbix server: Queue',
+        'units': '',
+        'value': dict({
+          'error': '',
+          'item_id': '23001',
+          'last_clock': 1784000000,
+          'last_value': '0',
+          'supported': True,
+        }),
+        'value_map': None,
+        'value_type': 'UNSIGNED',
+      }),
+      dict({
+        'enabled_by_default': False,
+        'key': 'zabbix[process,poller,avg,busy]',
+        'name': 'Zabbix server: Utilization of poller data collector processes, in %',
+        'units': '%',
+        'value': None,
+        'value_map': None,
+        'value_type': 'FLOAT',
+      }),
+      dict({
+        'enabled_by_default': True,
+        'key': 'zabbix[rcache,buffer,pused]',
+        'name': 'Zabbix server: Configuration cache, % used',
+        'units': '%',
+        'value': dict({
+          'error': '',
+          'item_id': '23006',
+          'last_clock': 1784000000,
+          'last_value': '20',
+          'supported': True,
+        }),
+        'value_map': None,
+        'value_type': 'FLOAT',
+      }),
+      dict({
+        'enabled_by_default': False,
+        'key': 'zabbix[stats,127.0.0.1,10051]',
+        'name': 'Zabbix server: Zabbix stats',
+        'units': '',
+        'value': None,
+        'value_map': None,
+        'value_type': 'TEXT',
+      }),
+      dict({
+        'enabled_by_default': False,
+        'key': 'zabbix.stats.version',
+        'name': 'Zabbix server: Stats version',
+        'units': '',
+        'value': None,
+        'value_map': None,
+        'value_type': 'CHAR',
+      }),
+    ]),
+  })
+# ---
+# name: test_entry_diagnostics
+  dict({
+    'entry': dict({
+      'data': dict({
+        'api_token': '**REDACTED**',
+        'verify_ssl': True,
+      }),
+      'options': dict({
+        'group_ids': list([
+          '2',
+          '7',
+        ]),
+        'item_mode': 'server_and_tagged',
+        'scan_interval': 30,
+        'tag': 'homeassistant',
+      }),
+    }),
+    'hosts': 4,
+    'items': dict({
+      'enabled_by_default': 14,
+      'polled': 14,
+      'service_device': 6,
+      'tracked': 17,
+      'unsupported': 1,
+      'value_kinds': dict({
+        'CHAR': 1,
+        'FLOAT': 9,
+        'TEXT': 2,
+        'UNSIGNED': 5,
+      }),
+    }),
+    'last_update_success': True,
+    'problems': dict({
+      'shown': 3,
+      'total': 5,
+    }),
+    'server': dict({
+      'counts': dict({
+        'hosts': 6,
+        'items': 27,
+        'items_unsupported': 1,
+        'triggers': 6,
+      }),
+      'user_type': 'USER',
+      'version': '7.4.14',
+    }),
+  })
+# ---
