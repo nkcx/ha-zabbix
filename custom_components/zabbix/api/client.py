@@ -440,7 +440,9 @@ class ZabbixClient:
                     "filter": {"state": 1},
                 },
             ),
-            self.call("trigger.get", {"countOutput": True, "monitored": True}),
+            # "active": enabled triggers on monitored hosts, like System information.
+            # ("monitored" also joins items and can be very slow on some databases.)
+            self.call("trigger.get", {"countOutput": True, "active": True}),
         )
         return ServerCounts(
             hosts=int(hosts),

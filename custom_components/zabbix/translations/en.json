@@ -10,7 +10,7 @@
           "verify_ssl": "Verify SSL certificate"
         },
         "data_description": {
-          "url": "The address of the Zabbix web interface, for example https://zabbix.example.com/zabbix/",
+          "url": "The address of the Zabbix web interface, for example {example_url}",
           "api_token": "Created in Zabbix under User settings → API tokens (or Users → API tokens).",
           "verify_ssl": "Turn off only for servers with a self-signed certificate."
         }
@@ -124,14 +124,30 @@
       "problem": {
         "name": "Problem",
         "state_attributes": {
-          "count": { "name": "Count" },
-          "problems": { "name": "Problems" },
-          "not_classified": { "name": "Not classified" },
-          "information": { "name": "Information" },
-          "warning": { "name": "Warning" },
-          "average": { "name": "Average" },
-          "high": { "name": "High" },
-          "disaster": { "name": "Disaster" }
+          "count": {
+            "name": "Count"
+          },
+          "problems": {
+            "name": "Problems"
+          },
+          "not_classified": {
+            "name": "Not classified"
+          },
+          "information": {
+            "name": "Information"
+          },
+          "warning": {
+            "name": "Warning"
+          },
+          "average": {
+            "name": "Average"
+          },
+          "high": {
+            "name": "High"
+          },
+          "disaster": {
+            "name": "Disaster"
+          }
         }
       },
       "maintenance": {
@@ -161,15 +177,33 @@
         "name": "Problems",
         "unit_of_measurement": "problems",
         "state_attributes": {
-          "problems": { "name": "Problems" },
-          "suppressed": { "name": "Suppressed" },
-          "symptoms": { "name": "Symptoms" },
-          "not_classified": { "name": "Not classified" },
-          "information": { "name": "Information" },
-          "warning": { "name": "Warning" },
-          "average": { "name": "Average" },
-          "high": { "name": "High" },
-          "disaster": { "name": "Disaster" }
+          "problems": {
+            "name": "Problems"
+          },
+          "suppressed": {
+            "name": "Suppressed"
+          },
+          "symptoms": {
+            "name": "Symptoms"
+          },
+          "not_classified": {
+            "name": "Not classified"
+          },
+          "information": {
+            "name": "Information"
+          },
+          "warning": {
+            "name": "Warning"
+          },
+          "average": {
+            "name": "Average"
+          },
+          "high": {
+            "name": "High"
+          },
+          "disaster": {
+            "name": "Disaster"
+          }
         }
       },
       "version": {
@@ -212,7 +246,9 @@
           "mixed": "Mixed"
         },
         "state_attributes": {
-          "interfaces": { "name": "Interfaces" }
+          "interfaces": {
+            "name": "Interfaces"
+          }
         }
       },
       "availability_snmp": {
@@ -224,7 +260,9 @@
           "mixed": "Mixed"
         },
         "state_attributes": {
-          "interfaces": { "name": "Interfaces" }
+          "interfaces": {
+            "name": "Interfaces"
+          }
         }
       },
       "availability_ipmi": {
@@ -236,7 +274,9 @@
           "mixed": "Mixed"
         },
         "state_attributes": {
-          "interfaces": { "name": "Interfaces" }
+          "interfaces": {
+            "name": "Interfaces"
+          }
         }
       },
       "availability_jmx": {
@@ -248,7 +288,9 @@
           "mixed": "Mixed"
         },
         "state_attributes": {
-          "interfaces": { "name": "Interfaces" }
+          "interfaces": {
+            "name": "Interfaces"
+          }
         }
       }
     }

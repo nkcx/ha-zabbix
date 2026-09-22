@@ -59,6 +59,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+EXAMPLE_URL = "https://zabbix.example.com/zabbix/"
+
 TOKEN_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 URL_SELECTOR = TextSelector(
     TextSelectorConfig(type=TextSelectorType.URL, autocomplete="url")
@@ -237,7 +239,7 @@ class ZabbixConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(schema, suggested),
             errors=errors,
-            description_placeholders=placeholders,
+            description_placeholders={"example_url": EXAMPLE_URL, **placeholders},
         )
 
     async def async_step_select_groups(

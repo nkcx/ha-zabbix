@@ -15,6 +15,9 @@ use Home Assistant's dashboards and automations on top of it.
 - **Problem events** for automations: new, resolved, acknowledged, severity changed…
 - **Actions** to acknowledge and close problems and to put hosts into maintenance.
 
+*Independent community project, not affiliated with Zabbix SIA; see
+[License and trademarks](#license-and-trademarks).*
+
 The integration reports what Zabbix reports: its problem count, its availability,
 its item names and value maps. It doesn't filter or reinterpret your data.
 
@@ -281,6 +284,11 @@ uv pip install --python .venv -r requirements_test.txt
 The tests run the integration against a fake Zabbix JSON-RPC server. CI also runs
 contract tests against the official Zabbix 7.0 and 7.4 Docker images.
 
-## License
+## License and trademarks
 
-MIT
+This integration is licensed under the [MIT License](LICENSE).
+
+This is an independent, community project. It is **not affiliated with, endorsed
+by, or sponsored by Zabbix SIA**. Zabbix® and the Zabbix logo are trademarks of
+Zabbix SIA and are used here only to identify the software this integration works
+with. All other trademarks are the property of their respective owners.

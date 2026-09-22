@@ -184,7 +184,7 @@ async def test_user_flow_unsupported_version_placeholder(
 ) -> None:
     fake_zabbix.version = "6.0.30"
     result = await _connect(hass, fake_zabbix)
-    assert result["description_placeholders"] == {"version": "6.0.30"}
+    assert result["description_placeholders"]["version"] == "6.0.30"
 
 
 async def test_user_flow_invalid_auth(
