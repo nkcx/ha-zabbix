@@ -68,6 +68,11 @@ jobs:
         run: docker compose -f .github/zabbix/compose.yaml up -d
       - name: Create API token
         run: echo "ZABBIX_CONTRACT_TOKEN=$(python .github/zabbix/create_token.py)" >> "$GITHUB_ENV"
+      - name: Analyze database
+        # A fresh database has no planner statistics yet (autovacuum adds them
+        # within minutes on a real server); without them some Zabbix API
+        # queries get pathological plans.
+        run: docker compose -f .github/zabbix/compose.yaml exec -T postgres psql -U zabbix -c "ANALYZE" zabbix
       - name: Contract tests
         env:
           ZABBIX_CONTRACT_URL: http://127.0.0.1:8080/
