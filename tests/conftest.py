@@ -8,6 +8,10 @@ from homeassistant.const import CONF_SCAN_INTERVAL, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.syrupy import (
+    HomeAssistantSnapshotExtension,
+)
+from syrupy.assertion import SnapshotAssertion
 
 from custom_components.zabbix.api import normalize_url
 from custom_components.zabbix.const import (
@@ -26,6 +30,16 @@ def auto_enable_custom_integrations(
     enable_custom_integrations: None,
 ) -> None:
     """Enable loading custom_components/zabbix."""
+
+
+@pytest.fixture
+def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
+    """Use the Home Assistant snapshot extension (snapshots/ directory).
+
+    The test plugin overrides syrupy's fixture too, but which plugin's fixture
+    wins depends on plugin load order; a conftest fixture always wins.
+    """
+    return snapshot.use_extension(HomeAssistantSnapshotExtension)
 
 
 @pytest.fixture
