@@ -485,6 +485,28 @@ class ZabbixClient:
             for trigger in result
         }
 
+    async def async_get_visible_trigger_ids(
+        self, trigger_ids: Iterable[str]
+    ) -> set[str]:
+        """Return the triggers the Zabbix frontend shows problems for.
+
+        Like the Problems page and host list: only enabled triggers on monitored
+        hosts and items, skipping triggers that depend on a trigger in problem state.
+        """
+        trigger_ids = ids(set(trigger_ids))
+        if not trigger_ids:
+            return set()
+        result = await self.call(
+            "trigger.get",
+            {
+                "output": ["triggerid"],
+                "triggerids": trigger_ids,
+                "monitored": True,
+                "skipDependent": True,
+            },
+        )
+        return {str(trigger["triggerid"]) for trigger in result}
+
     async def async_get_maintenances(self, name_prefix: str) -> list[Maintenance]:
         """Return maintenance periods whose name starts with ``name_prefix``."""
         result = await self.call(

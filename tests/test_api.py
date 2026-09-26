@@ -229,7 +229,10 @@ async def test_problems(client: ZabbixClient, fake_zabbix: FakeZabbix) -> None:
     assert problems["900"].tags[0].tag == "scope"
     hosts = await client.async_get_trigger_hosts(["13000", "13003"])
     assert hosts == {"13000": ("10500",), "13003": ("10501",)}
+    fake_zabbix.data["hidden_triggers"] = ["13003"]
+    assert await client.async_get_visible_trigger_ids(["13000", "13003"]) == {"13000"}
     calls = len(fake_zabbix.calls)
+    assert await client.async_get_visible_trigger_ids([]) == set()
     assert await client.async_get_trigger_hosts([]) == {}
     assert len(fake_zabbix.calls) == calls
 

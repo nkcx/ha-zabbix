@@ -726,6 +726,15 @@ class FakeZabbix:
         triggers = self.data["triggers"]
         if params.get("countOutput"):
             return str(len(triggers))
+        if params.get("monitored") or params.get("skipDependent"):
+            assert params.get("monitored")
+            assert params.get("skipDependent")
+            hidden = set(self.data.get("hidden_triggers", ()))
+            return [
+                {"triggerid": triggerid}
+                for triggerid in triggers
+                if triggerid in params["triggerids"] and triggerid not in hidden
+            ]
         return [
             {
                 "triggerid": triggerid,

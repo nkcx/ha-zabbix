@@ -203,6 +203,9 @@
           },
           "disaster": {
             "name": "Disaster"
+          },
+          "hidden": {
+            "name": "Hidden"
           }
         }
       },

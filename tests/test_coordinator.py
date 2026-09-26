@@ -381,22 +381,88 @@ async def test_all_mode(hass: HomeAssistant, init_integration: MockConfigEntry) 
     assert hass.states.get("sensor.web_server_01_screenshot") is None
 
 
-async def test_switching_to_all_enables_entities(
+async def _set_mode(hass: HomeAssistant, entry: MockConfigEntry, mode: str) -> None:
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_ITEM_MODE: mode}
+    )
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_item_mode_switch_round_trip(
+    hass: HomeAssistant,
+    fake_zabbix: FakeZabbix,
+    init_integration: MockConfigEntry,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    poller = (
+        "sensor.zabbix_zabbix_server_utilization_of_poller_data_collector_processes_in"
+    )
+    stats = "sensor.zabbix_zabbix_server_zabbix_stats"
+    assert entity_registry.async_get(poller).disabled
+    assert entity_registry.async_get(stats).disabled
+
+    # All items: integration-disabled entities are enabled and polled right away.
+    await _set_mode(hass, init_integration, "all")
+    assert not entity_registry.async_get(poller).disabled
+    assert "23002" in fake_zabbix.method_calls("item.get")[-1]["itemids"]
+    assert hass.states.get(poller).state == "1.5"
+
+    # The user disables one of them while in All items mode.
+    entity_registry.async_update_entity(
+        stats, disabled_by=er.RegistryEntryDisabler.USER
+    )
+    await hass.async_block_till_done()
+
+    # Back to the default mode: the integration's enabling is undone...
+    await _set_mode(hass, init_integration, "server_and_tagged")
+    assert (
+        entity_registry.async_get(poller).disabled_by
+        is er.RegistryEntryDisabler.INTEGRATION
+    )
+    assert "23002" not in fake_zabbix.method_calls("item.get")[-1]["itemids"]
+    # ...the user's choice is kept, and nothing is remembered any more.
+    assert entity_registry.async_get(stats).disabled_by is er.RegistryEntryDisabler.USER
+    assert init_integration.data["mode_enabled"] == []
+
+
+async def test_user_enabled_entity_stays_enabled(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
     entity_registry: er.EntityRegistry,
 ) -> None:
-    entity_id = (
+    poller = (
         "sensor.zabbix_zabbix_server_utilization_of_poller_data_collector_processes_in"
     )
-    assert entity_registry.async_get(entity_id).disabled
-    hass.config_entries.async_update_entry(
-        init_integration,
-        options={**init_integration.options, CONF_ITEM_MODE: "all"},
-    )
+    entity_registry.async_update_entity(poller, disabled_by=None)
     await hass.config_entries.async_reload(init_integration.entry_id)
     await hass.async_block_till_done()
-    assert not entity_registry.async_get(entity_id).disabled
+    await _set_mode(hass, init_integration, "all")
+    await _set_mode(hass, init_integration, "server_and_tagged")
+    assert not entity_registry.async_get(poller).disabled
+
+
+async def test_problems_hidden_by_the_frontend(
+    hass: HomeAssistant, fake_zabbix: FakeZabbix, init_integration: MockConfigEntry
+) -> None:
+    # Trigger disabled, host unmonitored, or dependent on a trigger in problem
+    # state: Zabbix's trigger.get(monitored, skipDependent) no longer returns it.
+    fake_zabbix.data["hidden_triggers"] = ["13000"]
+    await _refresh(hass, init_integration)
+    problems = hass.states.get("sensor.zabbix_problems")
+    assert problems.state == "2"
+    assert problems.attributes["hidden"] == 1
+    assert problems.attributes["high"] == 0
+    assert hass.states.get("binary_sensor.web_server_01_problem").state == "off"
+    assert hass.states.get("sensor.web_server_01_highest_problem_severity").state == (
+        "none"
+    )
+    params = fake_zabbix.method_calls("trigger.get")[-1]
+    assert params["monitored"] is True
+    assert params["skipDependent"] is True
+    fake_zabbix.data["hidden_triggers"] = []
+    await _refresh(hass, init_integration)
+    assert hass.states.get("sensor.zabbix_problems").state == "3"
 
 
 async def test_boot_time_ignores_jitter(

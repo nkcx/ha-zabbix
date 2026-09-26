@@ -2188,6 +2188,7 @@
       'average': 1,
       'disaster': 0,
       <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'Zabbix Problems',
+      'hidden': 0,
       'high': 1,
       'information': 1,
       'not_classified': 0,

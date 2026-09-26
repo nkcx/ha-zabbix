@@ -87,13 +87,9 @@ def key_matches(key: str, patterns: tuple[str, ...]) -> bool:
     return any(_key_pattern(pattern).fullmatch(key) for pattern in patterns)
 
 
-def is_shown(problem: Problem) -> bool:
-    """Return True if Zabbix shows the problem in its default views.
-
-    The Zabbix frontend (Problems page, host list, dashboard widgets) hides
-    suppressed problems and symptom problems unless asked to show them.
-    """
-    return not problem.suppressed and not problem.is_symptom
+# Entities the integration enabled because the item mode asked for it, so that it
+# can disable them again when the mode changes back.
+DATA_MODE_ENABLED = "mode_enabled"
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +123,7 @@ class ZabbixData:
     problems: dict[str, Problem]
     problems_by_host: dict[str, list[Problem]]
     server_counts: ServerCounts | None
+    visible_trigger_ids: frozenset[str] = field(default=frozenset())
     changes: tuple[ProblemChange, ...] = field(default=())
     item_ids_by_key: dict[tuple[str, str], str] = field(default_factory=dict)
 
@@ -143,6 +140,20 @@ class ZabbixData:
             return None
         return self.items[item_id]
 
+    def is_shown(self, problem: Problem) -> bool:
+        """Return True if Zabbix shows the problem in its default views.
+
+        The Zabbix frontend (Problems page, host list, dashboard widgets) hides
+        suppressed and symptom problems, problems of disabled triggers or
+        unmonitored hosts, and problems of triggers that depend on a trigger in
+        problem state.
+        """
+        return (
+            not problem.suppressed
+            and not problem.is_symptom
+            and problem.trigger_id in self.visible_trigger_ids
+        )
+
     def shown_problems(self, host_id: str | None = None) -> list[Problem]:
         """Return the problems Zabbix shows by default, for one host or all."""
         problems = (
@@ -150,7 +161,7 @@ class ZabbixData:
             if host_id is None
             else self.problems_by_host.get(host_id, [])
         )
-        return [problem for problem in problems if is_shown(problem)]
+        return [problem for problem in problems if self.is_shown(problem)]
 
 
 class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
@@ -258,13 +269,16 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
                 self.client.async_get_item_values(self._value_item_ids),
                 self.client.async_get_problems(),
             )
-            unknown_triggers = {
-                problem.trigger_id for problem in problem_list
-            } - self._trigger_hosts.keys()
+            problem_trigger_ids = {problem.trigger_id for problem in problem_list}
+            unknown_triggers = problem_trigger_ids - self._trigger_hosts.keys()
             if unknown_triggers:
                 self._trigger_hosts.update(
                     await self.client.async_get_trigger_hosts(unknown_triggers)
                 )
+            # Dependencies and trigger/host status change at any time: every poll.
+            visible_trigger_ids = await self.client.async_get_visible_trigger_ids(
+                problem_trigger_ids
+            )
         except ZabbixAuthError as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN, translation_key="invalid_auth"
@@ -309,6 +323,7 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
             problems=problems,
             problems_by_host=problems_by_host,
             server_counts=self._server_counts,
+            visible_trigger_ids=frozenset(visible_trigger_ids),
         )
         if self.data is not None:
             data.changes = _problem_changes(self.data.problems, problems)
@@ -388,9 +403,16 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
         self._update_service_device()
 
     def _enabled_item_ids(self, tracked: dict[str, TrackedItem]) -> set[str]:
-        """Return the items whose entity is enabled (only those are polled)."""
+        """Return the items whose entity is enabled (only those are polled).
+
+        Also applies item mode changes to existing entities: entities the
+        integration disabled are enabled when the mode now enables them, and
+        disabled again when the mode no longer does (unless the user changed them).
+        """
         registry = er.async_get(self.hass)
         entry_id = self.config_entry.entry_id
+        mode_enabled = set(self.config_entry.data.get(DATA_MODE_ENABLED, []))
+        still_mode_enabled: set[str] = set()
         enabled: set[str] = set()
         for item_id, tracked_item in tracked.items():
             unique_id = item_unique_id(
@@ -402,14 +424,29 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
                 if tracked_item.enabled_default:
                     enabled.add(item_id)
                 continue
-            if (
-                entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
-                and tracked_item.enabled_default
-            ):
-                # The item mode changed so the entity should now be enabled.
-                registry.async_update_entity(entry.entity_id, disabled_by=None)
+            if tracked_item.enabled_default:
+                if entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
+                    entry = registry.async_update_entity(
+                        entry.entity_id, disabled_by=None
+                    )
+                    still_mode_enabled.add(unique_id)
+                elif unique_id in mode_enabled and entry.disabled_by is None:
+                    still_mode_enabled.add(unique_id)
+            elif unique_id in mode_enabled and entry.disabled_by is None:
+                entry = registry.async_update_entity(
+                    entry.entity_id,
+                    disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+                )
             if entry.disabled_by is None:
                 enabled.add(item_id)
+        if still_mode_enabled != mode_enabled:
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={
+                    **self.config_entry.data,
+                    DATA_MODE_ENABLED: sorted(still_mode_enabled),
+                },
+            )
         return enabled
 
     def _update_missing_groups_issue(self, existing: set[str]) -> None:

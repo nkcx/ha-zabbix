@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_API_TOKEN
-from .coordinator import ZabbixConfigEntry, is_shown
+from .coordinator import ZabbixConfigEntry
 from .unique_ids import host_device_identifier
 
 TO_REDACT = {CONF_API_TOKEN}
@@ -51,7 +51,7 @@ async def async_get_config_entry_diagnostics(
         },
         "problems": {
             "total": len(data.problems),
-            "shown": sum(1 for problem in data.problems.values() if is_shown(problem)),
+            "shown": len(data.shown_problems()),
         },
         "last_update_success": coordinator.last_update_success,
     }

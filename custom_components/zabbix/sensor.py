@@ -197,7 +197,7 @@ class ZabbixProblemsSensor(ZabbixServiceEntity, SensorEntity):
     _attr_translation_key = KIND_PROBLEMS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unrecorded_attributes = frozenset(
-        {"problems", "suppressed", "symptoms", *SEVERITY_NAMES}
+        {"problems", "suppressed", "symptoms", "hidden", *SEVERITY_NAMES}
     )
 
     def __init__(self, coordinator: ZabbixCoordinator) -> None:
@@ -223,6 +223,12 @@ class ZabbixProblemsSensor(ZabbixServiceEntity, SensorEntity):
             ),
             "symptoms": sum(
                 1 for problem in data.problems.values() if problem.is_symptom
+            ),
+            # Disabled triggers, unmonitored hosts, dependent triggers.
+            "hidden": sum(
+                1
+                for problem in data.problems.values()
+                if problem.trigger_id not in data.visible_trigger_ids
             ),
             "problems": [problem_summary(problem, data) for problem in shown],
         }

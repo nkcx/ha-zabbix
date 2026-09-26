@@ -107,7 +107,11 @@ integration.
 
 ### How items are shown
 
-Items keep their Zabbix names. Their type follows their Zabbix settings:
+Items keep their Zabbix names, so entity IDs are the device name plus the item
+name: the server item *Zabbix server: Queue* on the Zabbix device becomes
+`sensor.zabbix_zabbix_server_queue`, and *Linux: CPU utilization* on host *web-01*
+becomes `sensor.web_01_linux_cpu_utilization`. Rename entities in Home Assistant if
+you prefer. Their type follows their Zabbix settings:
 
 - **Value map** → a sensor showing the mapped text (e.g. *Up*/*Down*). A value
   without a mapping shows as unknown, with the raw value in the `raw_value`
@@ -140,8 +144,8 @@ Items keep their Zabbix names. Their type follows their Zabbix settings:
 |---|---|
 | Problems | Number of problems, with per-severity counts and the list of problems. |
 | Version | Zabbix server version. |
-| Hosts, Items, Not supported items, Triggers | Counts, like Zabbix's *System information* (not in *Tagged only* mode). |
-| Server items | The server's self-monitoring items: values per second, queue, caches, internal process utilization… (not in *Tagged only* mode). Per-process utilization items are disabled by default. |
+| Hosts, Items, Not supported items, Triggers | Monitored hosts, and enabled items and triggers on monitored hosts: the *enabled* figures on Zabbix's *System information* page, not its totals (not in *Tagged only* mode). |
+| Server items | The server's self-monitoring items (not in *Tagged only* mode). Only the main statistics are enabled by default: processed values per second, the queues (`zabbix[queue]`, `zabbix[queue,10m]`, LLD, preprocessing, connector) and cache usage (`…,pused`). The rest (per-process utilization, per-type value rates, value/trend cache statistics…) are created disabled; enable the ones you want. |
 | Problem events | Event entity for every problem. |
 
 The Zabbix server's *machine* (e.g. its Linux VM, if you monitor it) is a normal
@@ -151,10 +155,18 @@ when Zabbix runs in a container.
 ### Which problems count
 
 Counts and the *Problem* sensors follow Zabbix's default views (Problems page,
-dashboards, host list): **suppressed** problems (hosts in maintenance) and
-**symptom** problems (with cause/symptom correlation) are not counted. The *Problems*
-sensor has `suppressed` and `symptoms` attributes with their numbers. Problems on
-hosts outside the selected host groups still count on the Zabbix device.
+dashboards, host list). Like them, they leave out problems that are:
+
+- **suppressed** (hosts in maintenance);
+- **symptoms** of another problem (cause/symptom correlation);
+- on a **disabled trigger** or an **unmonitored host** (Zabbix keeps such problems
+  open but doesn't show them);
+- on a trigger that **depends on another trigger in problem state**.
+
+The *Problems* sensor's `suppressed`, `symptoms` and `hidden` attributes count the
+problems left out (`hidden` covers the last two reasons). Problems on hosts outside
+the selected host groups still count on the Zabbix device. Problem events fire for
+every problem, shown or not.
 
 ## Problem events
 
