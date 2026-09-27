@@ -6,10 +6,10 @@
 zabbix_export:
   version: '7.0'
   template_groups:
-    - uuid: e8e62282b3db5384a38ff5121e59891e
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
       name: Templates/Applications
   templates:
-    - uuid: ea3507d9531a5196944bf7dd3660b02f
+    - uuid: 533f35c9caac409188e7ea97976e62c6
       template: 'Home Assistant'
       name: 'Home Assistant'
       description: |
@@ -23,13 +23,13 @@ zabbix_export:
       groups:
         - name: Templates/Applications
       discovery_rules:
-        - uuid: 63158bef361c5d44b27bca55face2b16
+        - uuid: 8583c9e2d3f84f16a138bfeb5c4a3978
           name: 'Numeric states discovery'
           type: TRAP
           key: homeassistant.floats_discovery
           description: 'Numeric states and numeric attributes of Home Assistant entities.'
           item_prototypes:
-            - uuid: 244e6b2a34a154b9be8f2adc3834256e
+            - uuid: af66808ad4404660a50318021fdaf735
               name: '{#KEY}'
               type: TRAP
               key: 'homeassistant.float[{#KEY}]'
@@ -43,13 +43,13 @@ zabbix_export:
               tags:
                 - tag: component
                   value: homeassistant
-        - uuid: 7853df75deff59be8633493f33df802b
+        - uuid: d4e38bbab70646cda4a5a8a3293a2cc2
           name: 'Text states discovery'
           type: TRAP
           key: homeassistant.strings_discovery
           description: 'Non-numeric states, when "Publish non-numeric states" is on.'
           item_prototypes:
-            - uuid: f15b202d79cb59a3b97b7c61075fa76c
+            - uuid: da58c276694e4fb6aeb13e3365a8f71a
               name: '{#KEY}'
               type: TRAP
               key: 'homeassistant.string[{#KEY}]'
