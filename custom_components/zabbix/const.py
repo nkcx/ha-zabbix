@@ -15,6 +15,12 @@ CONF_GROUP_IDS: Final = "group_ids"
 CONF_ITEM_MODE: Final = "item_mode"
 CONF_TAG: Final = "tag"
 CONF_CONFIRM: Final = "confirm"
+CONF_PUBLISH_HOST: Final = "publish_host"
+CONF_PUBLISH_SERVER: Final = "publish_server"
+CONF_PUBLISH_PORT: Final = "publish_port"
+CONF_PUBLISH_STRINGS: Final = "publish_strings"
+
+DEFAULT_PUBLISH_PORT: Final = 10051
 
 DEFAULT_SCAN_INTERVAL: Final = 30
 MIN_SCAN_INTERVAL: Final = 10

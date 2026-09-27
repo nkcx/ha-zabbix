@@ -21,6 +21,7 @@ from custom_components.zabbix.const import (
 )
 
 from .fake_zabbix import TOKEN, ApiFailure, FakeZabbix
+from .test_publisher import FakeSender
 
 
 async def _start(hass: HomeAssistant) -> dict[str, Any]:
@@ -350,11 +351,21 @@ async def test_reconfigure_to_other_entry_url(
     assert result["reason"] == "already_configured"
 
 
+async def _open_options(
+    hass: HomeAssistant, entry: MockConfigEntry, step: str
+) -> dict[str, Any]:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.MENU
+    return await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": step}
+    )
+
+
 async def test_options_flow(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
-    result = await hass.config_entries.options.async_init(init_integration.entry_id)
-    assert result["step_id"] == "init"
+    result = await _open_options(hass, init_integration, "monitoring")
+    assert result["step_id"] == "monitoring"
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {
@@ -378,7 +389,7 @@ async def test_options_flow(
 async def test_options_flow_all_items(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
-    result = await hass.config_entries.options.async_init(init_integration.entry_id)
+    result = await _open_options(hass, init_integration, "monitoring")
     user_input = {
         CONF_GROUP_IDS: ["2"],
         CONF_SCAN_INTERVAL: 30,
@@ -402,7 +413,7 @@ async def test_options_flow_all_items(
     assert init_integration.options[CONF_ITEM_MODE] == "all"
 
     # Staying in All items mode doesn't ask again.
-    result = await hass.config_entries.options.async_init(init_integration.entry_id)
+    result = await _open_options(hass, init_integration, "monitoring")
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], user_input
     )
@@ -414,7 +425,7 @@ async def test_options_flow_cannot_connect(
     hass: HomeAssistant, fake_zabbix: FakeZabbix, init_integration: MockConfigEntry
 ) -> None:
     fake_zabbix.http_status = 503
-    result = await hass.config_entries.options.async_init(init_integration.entry_id)
+    result = await _open_options(hass, init_integration, "monitoring")
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "cannot_connect"
 
@@ -422,7 +433,7 @@ async def test_options_flow_cannot_connect(
 async def test_options_flow_confirm_cannot_connect(
     hass: HomeAssistant, fake_zabbix: FakeZabbix, init_integration: MockConfigEntry
 ) -> None:
-    result = await hass.config_entries.options.async_init(init_integration.entry_id)
+    result = await _open_options(hass, init_integration, "monitoring")
     fake_zabbix.http_status = 503
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
@@ -436,3 +447,50 @@ async def test_options_flow_confirm_cannot_connect(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "cannot_connect"
     fake_zabbix.http_status = None
+
+
+@patch("custom_components.zabbix.AsyncSender", FakeSender)
+async def test_options_flow_publish(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    result = await _open_options(hass, init_integration, "publish")
+    assert result["step_id"] == "publish"
+    assert result["description_placeholders"] == {"server": "127.0.0.1"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "publish_host": " Home Assistant ",
+            "publish_port": 10051,
+            "publish_strings": True,
+            "include_domains": ["sensor"],
+            "exclude_entity_globs": ["sensor.*_battery"],
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    options = init_integration.options
+    assert options["publish_host"] == "Home Assistant"
+    assert options["publish_server"] == ""
+    assert options["publish_strings"] is True
+    assert options["include_domains"] == ["sensor"]
+    assert options["exclude_entity_globs"] == ["sensor.*_battery"]
+    assert options["include_entities"] == []
+    # Monitoring options are kept.
+    assert options[CONF_GROUP_IDS] == ["2", "7"]
+
+    # Saving the monitoring options keeps the publish options.
+    result = await _open_options(hass, init_integration, "monitoring")
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_GROUP_IDS: ["2"],
+            CONF_SCAN_INTERVAL: 30,
+            CONF_ITEM_MODE: "server_and_tagged",
+            CONF_TAG: "homeassistant",
+        },
+    )
+    await hass.async_block_till_done()
+    assert init_integration.options["publish_host"] == "Home Assistant"
+    assert init_integration.options[CONF_GROUP_IDS] == ["2"]
+    assert init_integration.runtime_data.publisher is not None
+    await hass.config_entries.async_unload(init_integration.entry_id)

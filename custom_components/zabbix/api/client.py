@@ -528,6 +528,27 @@ class ZabbixClient:
         )
         return {str(trigger["triggerid"]) for trigger in result}
 
+    async def async_check_publish_host(self, host: str) -> tuple[bool, bool]:
+        """Check the host that receives published states.
+
+        Returns whether the host exists (and is visible to the token's user) and
+        whether it has the ``homeassistant.floats_discovery`` trapper item.
+        """
+        hosts = await self.call(
+            "host.get", {"output": ["hostid"], "filter": {"host": [host]}}
+        )
+        if not hosts:
+            return False, False
+        items = await self.call(
+            "item.get",
+            {
+                "output": ["itemid"],
+                "hostids": [str(hosts[0]["hostid"])],
+                "filter": {"key_": ["homeassistant.floats_discovery"]},
+            },
+        )
+        return True, bool(items)
+
     async def async_get_maintenances(self, name_prefix: str) -> list[Maintenance]:
         """Return maintenance periods whose name starts with ``name_prefix``."""
         result = await self.call(

@@ -12,6 +12,8 @@ services:
       DB_SERVER_HOST: postgres
       POSTGRES_USER: zabbix
       POSTGRES_PASSWORD: zabbix
+      ZBX_CACHEUPDATEFREQUENCY: 5
+    ports: ["10051:10051"]
     depends_on: [postgres]
   web:
     image: zabbix/zabbix-web-nginx-pgsql:alpine-${ZABBIX_VERSION}

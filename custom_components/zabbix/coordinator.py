@@ -61,6 +61,7 @@ from .const import (
     ProblemEventType,
 )
 from .devices import service_device_info
+from .publisher import ZabbixPublisher
 from .unique_ids import (
     host_device_identifier,
     host_unique_id,
@@ -72,6 +73,8 @@ from .unique_ids import (
 type ZabbixConfigEntry = ConfigEntry[ZabbixCoordinator]
 
 ISSUE_MISSING_GROUPS = "missing_groups"
+ISSUE_PUBLISH_HOST = "publish_host_missing"
+ISSUE_PUBLISH_TEMPLATE = "publish_template_missing"
 
 
 @cache
@@ -194,6 +197,7 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
         self._active_counts: dict[str, int] = {}
         self._server_counts: ServerCounts | None = None
         self._trigger_hosts: dict[str, tuple[str, ...]] = {}
+        self.publisher: ZabbixPublisher | None = None
 
     @property
     def group_ids(self) -> list[str]:
@@ -400,6 +404,8 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
         self._known_host_ids = frozenset(host_ids)
         self._metadata_refreshed = time.monotonic()
         self._update_missing_groups_issue({group.group_id for group in groups})
+        if self.publisher is not None:
+            await self._async_check_publish_host(self.publisher.host)
         self._update_service_device()
 
     def _enabled_item_ids(self, tracked: dict[str, TrackedItem]) -> set[str]:
@@ -468,6 +474,29 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
             )
         else:
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+
+    async def _async_check_publish_host(self, host: str) -> None:
+        """Raise repair issues when the host receiving published states is unusable."""
+        exists, has_template = await self.client.async_check_publish_host(host)
+        entry_id = self.config_entry.entry_id
+        placeholders = {"title": self.config_entry.title, "host": host}
+        for issue, problem in (
+            (ISSUE_PUBLISH_HOST, not exists),
+            (ISSUE_PUBLISH_TEMPLATE, exists and not has_template),
+        ):
+            issue_id = f"{issue}_{entry_id}"
+            if problem:
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key=issue,
+                    translation_placeholders=placeholders,
+                )
+            else:
+                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
 
     def _update_service_device(self) -> None:
         """Keep the Zabbix device's software version current."""

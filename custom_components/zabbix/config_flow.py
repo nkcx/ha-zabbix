@@ -13,8 +13,18 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_SCAN_INTERVAL, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entityfilter import (
+    CONF_EXCLUDE_DOMAINS,
+    CONF_EXCLUDE_ENTITIES,
+    CONF_EXCLUDE_ENTITY_GLOBS,
+    CONF_INCLUDE_DOMAINS,
+    CONF_INCLUDE_ENTITIES,
+    CONF_INCLUDE_ENTITY_GLOBS,
+)
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    EntitySelector,
+    EntitySelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -46,8 +56,13 @@ from .const import (
     CONF_CONFIRM,
     CONF_GROUP_IDS,
     CONF_ITEM_MODE,
+    CONF_PUBLISH_HOST,
+    CONF_PUBLISH_PORT,
+    CONF_PUBLISH_SERVER,
+    CONF_PUBLISH_STRINGS,
     CONF_TAG,
     DEFAULT_ITEM_MODE,
+    DEFAULT_PUBLISH_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TAG,
     DOMAIN,
@@ -60,6 +75,15 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 EXAMPLE_URL = "https://zabbix.example.com/zabbix/"
+
+PUBLISH_FILTER_KEYS = (
+    CONF_INCLUDE_DOMAINS,
+    CONF_INCLUDE_ENTITIES,
+    CONF_INCLUDE_ENTITY_GLOBS,
+    CONF_EXCLUDE_DOMAINS,
+    CONF_EXCLUDE_ENTITIES,
+    CONF_EXCLUDE_ENTITY_GLOBS,
+)
 
 TOKEN_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 URL_SELECTOR = TextSelector(
@@ -402,17 +426,29 @@ class ZabbixConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class ZabbixOptionsFlow(OptionsFlowWithReload):
-    """Change host groups, polling and item selection."""
+    """Change monitoring options and publishing of Home Assistant states."""
 
     def __init__(self) -> None:
         """Initialize the options flow."""
         self._client: ZabbixClient | None = None
         self._options: dict[str, Any] = {}
 
+    def _save(self, options: Mapping[str, Any]) -> ConfigFlowResult:
+        """Save options, keeping those of the other menu entry."""
+        return self.async_create_entry(data={**self.config_entry.options, **options})
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show the options."""
+        """Show the options menu."""
+        return self.async_show_menu(
+            step_id="init", menu_options=["monitoring", "publish"]
+        )
+
+    async def async_step_monitoring(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change host groups, polling and item selection."""
         entry = self.config_entry
         if self._client is None:
             self._client = ZabbixClient(
@@ -432,7 +468,7 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
                 and entry.options.get(CONF_ITEM_MODE) != ItemMode.ALL
             ):
                 return await self.async_step_confirm_all()
-            return self.async_create_entry(data=self._options)
+            return self._save(self._options)
         try:
             groups = await self._client.async_get_host_groups()
         except ZabbixError:
@@ -465,7 +501,7 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
                 ),
             }
         ).extend(_item_schema(options).schema)
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="monitoring", data_schema=schema)
 
     async def async_step_confirm_all(
         self, user_input: dict[str, Any] | None = None
@@ -475,7 +511,7 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
         errors: dict[str, str] = {}
         if user_input is not None:
             if user_input[CONF_CONFIRM]:
-                return self.async_create_entry(data=self._options)
+                return self._save(self._options)
             errors["base"] = "confirm_required"
         try:
             placeholders = await async_all_items_placeholders(
@@ -488,4 +524,73 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
             data_schema=CONFIRM_SCHEMA,
             description_placeholders=placeholders,
             errors=errors,
+        )
+
+    async def async_step_publish(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Configure publishing Home Assistant states to a Zabbix host."""
+        if user_input is not None:
+            new: dict[str, Any] = {
+                key: user_input.get(key, []) for key in PUBLISH_FILTER_KEYS
+            }
+            new[CONF_PUBLISH_HOST] = user_input.get(CONF_PUBLISH_HOST, "").strip()
+            new[CONF_PUBLISH_SERVER] = user_input.get(CONF_PUBLISH_SERVER, "").strip()
+            new[CONF_PUBLISH_PORT] = int(
+                user_input.get(CONF_PUBLISH_PORT, DEFAULT_PUBLISH_PORT)
+            )
+            new[CONF_PUBLISH_STRINGS] = user_input.get(CONF_PUBLISH_STRINGS, False)
+            return self._save(new)
+        options = self.config_entry.options
+        domains = sorted({state.domain for state in self.hass.states.async_all()})
+        text_list = SelectSelector(
+            SelectSelectorConfig(options=[], multiple=True, custom_value=True)
+        )
+        domain_list = SelectSelector(
+            SelectSelectorConfig(options=domains, multiple=True, custom_value=True)
+        )
+        entity_list = EntitySelector(EntitySelectorConfig(multiple=True))
+        filter_selectors: dict[str, SelectSelector | EntitySelector] = {
+            CONF_INCLUDE_DOMAINS: domain_list,
+            CONF_INCLUDE_ENTITIES: entity_list,
+            CONF_INCLUDE_ENTITY_GLOBS: text_list,
+            CONF_EXCLUDE_DOMAINS: domain_list,
+            CONF_EXCLUDE_ENTITIES: entity_list,
+            CONF_EXCLUDE_ENTITY_GLOBS: text_list,
+        }
+        fields: dict[vol.Marker, Any] = {
+            vol.Optional(
+                CONF_PUBLISH_HOST,
+                description={"suggested_value": options.get(CONF_PUBLISH_HOST, "")},
+            ): str,
+            vol.Optional(
+                CONF_PUBLISH_SERVER,
+                description={"suggested_value": options.get(CONF_PUBLISH_SERVER, "")},
+            ): str,
+            vol.Required(
+                CONF_PUBLISH_PORT,
+                default=options.get(CONF_PUBLISH_PORT, DEFAULT_PUBLISH_PORT),
+            ): vol.All(
+                NumberSelector(
+                    NumberSelectorConfig(
+                        min=1, max=65535, step=1, mode=NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Coerce(int),
+            ),
+            vol.Required(
+                CONF_PUBLISH_STRINGS,
+                default=options.get(CONF_PUBLISH_STRINGS, False),
+            ): BooleanSelector(),
+        }
+        for key, selector in filter_selectors.items():
+            fields[
+                vol.Optional(key, description={"suggested_value": options.get(key, [])})
+            ] = selector
+        return self.async_show_form(
+            step_id="publish",
+            data_schema=vol.Schema(fields),
+            description_placeholders={
+                "server": URL(self.config_entry.data[CONF_URL]).host or ""
+            },
         )

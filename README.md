@@ -14,6 +14,8 @@ use Home Assistant's dashboards and automations on top of it.
 - The Zabbix **items you choose** (by tagging them in Zabbix) become sensors.
 - **Problem events** for automations: new, resolved, acknowledged, severity changed…
 - **Actions** to acknowledge and close problems and to put hosts into maintenance.
+- **Publishing**: send Home Assistant states to a Zabbix host, like the built-in
+  integration.
 
 *Independent community project, not affiliated with Zabbix SIA; see
 [License and trademarks](#license-and-trademarks).*
@@ -23,9 +25,10 @@ its item names and value maps. It doesn't filter or reinterpret your data.
 
 > [!NOTE]
 > This integration uses the `zabbix` domain and **replaces the built-in Zabbix
-> integration**, which only pushes Home Assistant states to Zabbix via YAML. Pushing
-> Home Assistant data to Zabbix is planned but not available yet. If you use the
-> built-in integration's YAML configuration, don't install this one yet.
+> integration**. It can also publish Home Assistant states to Zabbix like the
+> built-in integration, using the same item keys; see
+> [Publishing Home Assistant states to Zabbix](#publishing-home-assistant-states-to-zabbix)
+> for migrating from its YAML configuration.
 
 ## Requirements
 
@@ -245,6 +248,77 @@ data:
   message: Acknowledged from Home Assistant
 ```
 
+## Publishing Home Assistant states to Zabbix
+
+The integration can send Home Assistant state changes to a Zabbix host, like
+Home Assistant's built-in Zabbix integration. It uses the **same item keys and
+discovery**, so a host that already receives data from the built-in integration
+keeps its items and history.
+
+### What is sent
+
+On every state change of a published entity:
+
+| Home Assistant | Zabbix item key |
+|---|---|
+| A numeric state, or one Home Assistant can express as a number (`on`/`off`, `open`/`closed`, `home`/`not_home`, `locked`/`unlocked` → 1/0) | `homeassistant.float[<entity_id>]` |
+| Each numeric attribute | `homeassistant.float[<entity_id>/<attribute>]` |
+| Any other state, if **Publish non-numeric states** is on | `homeassistant.string[<entity_id>]` |
+
+`unknown` and `unavailable` states are not sent. Items are created in Zabbix by
+low-level discovery (`homeassistant.floats_discovery` and
+`homeassistant.strings_discovery`). Values are sent in batches over the Zabbix
+trapper protocol (port 10051), with the time Home Assistant recorded them.
+
+Compared with the built-in integration, the complete discovery list is sent at
+startup and every hour (so Zabbix doesn't mark items as lost after a restart), and
+this integration's own entities are never sent back to Zabbix.
+
+### Setting it up
+
+1. **Zabbix: import the template.** Download
+   [`zabbix/template_home_assistant.yaml`](zabbix/template_home_assistant.yaml) and
+   import it under **Data collection → Templates → Import** (Zabbix 7.0+). It has the
+   discovery rules for numeric and text states.
+2. **Zabbix: create the host** that receives the states, e.g. *Home Assistant*,
+   under **Data collection → Hosts → Create host**. It needs no interface. Link the
+   *Home Assistant* template.
+3. **Home Assistant:** open the Zabbix integration → **Configure → Publish to
+   Zabbix**:
+
+| Option | Description |
+|---|---|
+| Zabbix host | The host's technical **Host name**. Empty turns publishing off. |
+| Zabbix server or proxy | Where values are sent. Empty uses the host of the integration's URL. Use a proxy's address if the host is monitored by a proxy. |
+| Trapper port | Default 10051. |
+| Publish non-numeric states | Also send text states. |
+| Include / exclude domains, entities, patterns | Which entities are published. **Without any include filter, every entity is published**, with all its numeric attributes, as in the built-in integration. |
+
+Zabbix must accept trapper connections from Home Assistant: port 10051 must be
+reachable, and the discovered items' *Allowed hosts* (empty by default) must allow
+Home Assistant's address.
+
+The integration checks the host once in a while and raises a repair issue if it
+doesn't exist or lacks the template. Publishing statistics (values sent, processed
+and failed, last error) are in the integration's **diagnostics**.
+
+### Migrating from the built-in integration
+
+The built-in integration's `zabbix:` YAML block is ignored; a repair issue reminds
+you of it. Set up this integration in the UI with an API token, then enter the same
+settings under **Publish to Zabbix**:
+
+| YAML | Publish to Zabbix |
+|---|---|
+| `publish_states_host` | Zabbix host |
+| `host` | Zabbix server or proxy (only if different from the URL) |
+| `publish_string_states` | Publish non-numeric states |
+| `include` / `exclude` (`domains`, `entities`, `entity_globs`) | The include / exclude fields |
+
+The item keys are the same, so the Zabbix host keeps working. The built-in
+integration's template only covers numeric states; import the new template if you
+publish text states. Remove the `zabbix:` block from `configuration.yaml` afterwards.
+
 ## How data is updated
 
 - **Every update interval** (default 30 s): host availability and maintenance, the
@@ -255,8 +329,8 @@ data:
 
 ## Known limitations
 
-- Pushing Home Assistant states to Zabbix (the built-in integration's feature) is
-  not available yet.
+- Published states are sent to one Zabbix host; TLS (PSK) for the trapper
+  connection is not supported yet.
 - Events are detected by polling, not delivered in real time.
 - Zabbix 6.x is not supported (it uses a different API authentication).
 - Item names are Zabbix's names, which often start with a template prefix such as

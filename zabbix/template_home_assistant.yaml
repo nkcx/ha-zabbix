@@ -1,0 +1,64 @@
+# Zabbix 7.0+ template for publishing Home Assistant states to Zabbix.
+# Import in Zabbix under Data collection -> Templates -> Import, then link it to
+# the host configured in the integration (Configure -> Publish to Zabbix).
+# Item keys are the same as those of Home Assistant's built-in Zabbix
+# integration, so the host keeps its existing items and history.
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: e8e62282b3db5384a38ff5121e59891e
+      name: Templates/Applications
+  templates:
+    - uuid: ea3507d9531a5196944bf7dd3660b02f
+      template: 'Home Assistant'
+      name: 'Home Assistant'
+      description: |
+        Receives Home Assistant state changes sent by the ha-zabbix integration
+        (https://github.com/nkcx/ha-zabbix) through the Zabbix trapper protocol.
+        Items are created by low-level discovery, one per entity (and per numeric
+        attribute).
+      vendor:
+        name: ha-zabbix
+        version: 7.0-0
+      groups:
+        - name: Templates/Applications
+      discovery_rules:
+        - uuid: 63158bef361c5d44b27bca55face2b16
+          name: 'Numeric states discovery'
+          type: TRAP
+          key: homeassistant.floats_discovery
+          description: 'Numeric states and numeric attributes of Home Assistant entities.'
+          item_prototypes:
+            - uuid: 244e6b2a34a154b9be8f2adc3834256e
+              name: '{#KEY}'
+              type: TRAP
+              key: 'homeassistant.float[{#KEY}]'
+              history: 1095d
+              trends: '0'
+              value_type: FLOAT
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - '14400'
+              tags:
+                - tag: component
+                  value: homeassistant
+        - uuid: 7853df75deff59be8633493f33df802b
+          name: 'Text states discovery'
+          type: TRAP
+          key: homeassistant.strings_discovery
+          description: 'Non-numeric states, when "Publish non-numeric states" is on.'
+          item_prototypes:
+            - uuid: f15b202d79cb59a3b97b7c61075fa76c
+              name: '{#KEY}'
+              type: TRAP
+              key: 'homeassistant.string[{#KEY}]'
+              history: 90d
+              value_type: TEXT
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - '14400'
+              tags:
+                - tag: component
+                  value: homeassistant

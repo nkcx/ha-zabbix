@@ -179,6 +179,7 @@
       'shown': 3,
       'total': 5,
     }),
+    'publisher': None,
     'server': dict({
       'counts': dict({
         'hosts': 6,

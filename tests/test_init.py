@@ -74,12 +74,21 @@ async def test_setup_unsupported_version(
 async def test_yaml_configuration_raises_issue(
     hass: HomeAssistant, issue_registry: ir.IssueRegistry
 ) -> None:
+    # The built-in integration's YAML is accepted and flagged for migration.
     assert await async_setup_component(
-        hass, DOMAIN, {DOMAIN: {"host": "zabbix.example.com"}}
+        hass,
+        DOMAIN,
+        {
+            DOMAIN: {
+                "host": "zabbix.example.com",
+                "publish_states_host": "homeassistant",
+                "include": {"domains": ["sensor"]},
+            }
+        },
     )
-    assert issue_registry.async_get_issue(
-        "homeassistant", f"config_entry_only_{DOMAIN}"
-    )
+    issue = issue_registry.async_get_issue(DOMAIN, "yaml_configuration")
+    assert issue is not None
+    assert issue.translation_placeholders == {"publish_host": "homeassistant"}
 
 
 async def test_remove_config_entry_device(

@@ -54,6 +54,9 @@ async def async_get_config_entry_diagnostics(
             "shown": len(data.shown_problems()),
         },
         "last_update_success": coordinator.last_update_success,
+        "publisher": dict(coordinator.publisher.diagnostics())
+        if coordinator.publisher
+        else None,
     }
 
 

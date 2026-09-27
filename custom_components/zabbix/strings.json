@@ -80,8 +80,22 @@
   },
   "options": {
     "step": {
+      "confirm_all": {
+        "title": "Import all items?",
+        "description": "⚠️ The selected host groups contain **{hosts}** hosts with **{items}** enabled items. The largest host, {largest_host}, has {largest_count} items.\n\nEvery item becomes an enabled entity that is polled and recorded by Home Assistant. This can slow Home Assistant down and grow its database quickly.",
+        "data": {
+          "confirm": "I understand this will create an entity for every item"
+        }
+      },
       "init": {
         "title": "Zabbix options",
+        "menu_options": {
+          "monitoring": "Monitoring (Zabbix → Home Assistant)",
+          "publish": "Publish to Zabbix (Home Assistant → Zabbix)"
+        }
+      },
+      "monitoring": {
+        "title": "Monitoring",
         "description": "⚠️ **All items** can create a very large number of entities: a fully templated host commonly has hundreds, sometimes thousands, of items. Prefer tagging the items you want.",
         "data": {
           "group_ids": "Host groups",
@@ -95,11 +109,28 @@
           "tag": "Items with a tag of this name (any value) become entities."
         }
       },
-      "confirm_all": {
-        "title": "Import all items?",
-        "description": "⚠️ The selected host groups contain **{hosts}** hosts with **{items}** enabled items. The largest host, {largest_host}, has {largest_count} items.\n\nEvery item becomes an enabled entity that is polled and recorded by Home Assistant. This can slow Home Assistant down and grow its database quickly.",
+      "publish": {
+        "title": "Publish to Zabbix",
+        "description": "Send Home Assistant state changes to a Zabbix host, like Home Assistant's built-in Zabbix integration (same item keys, so existing hosts and templates keep working). Create the host in Zabbix first and link the *Home Assistant* template from the documentation.\n\nLeave **Zabbix host** empty to turn publishing off. With no include filters, **every** entity is published, including its numeric attributes.",
         "data": {
-          "confirm": "I understand this will create an entity for every item"
+          "publish_host": "Zabbix host",
+          "publish_server": "Zabbix server or proxy",
+          "publish_port": "Trapper port",
+          "publish_strings": "Publish non-numeric states",
+          "include_domains": "Include domains",
+          "include_entities": "Include entities",
+          "include_entity_globs": "Include entity patterns",
+          "exclude_domains": "Exclude domains",
+          "exclude_entities": "Exclude entities",
+          "exclude_entity_globs": "Exclude entity patterns"
+        },
+        "data_description": {
+          "publish_host": "The technical host name (*Host name*) of the Zabbix host that receives the states.",
+          "publish_server": "Where to send the values; leave empty to use {server}.",
+          "publish_port": "The Zabbix trapper port (default 10051).",
+          "publish_strings": "Also send states that aren't numbers, as text items.",
+          "include_entity_globs": "Patterns such as sensor.*_temperature.",
+          "exclude_entity_globs": "Patterns such as sensor.*_battery."
         }
       }
     },
@@ -331,6 +362,18 @@
     "missing_groups": {
       "title": "Zabbix host groups were removed",
       "description": "{count} of the host groups selected for {title} no longer exist in Zabbix. Open the integration's options to review the host group selection."
+    },
+    "yaml_configuration": {
+      "title": "Zabbix YAML configuration is not used",
+      "description": "Your `configuration.yaml` has a `zabbix:` section from Home Assistant's built-in Zabbix integration. This integration replaces it and is set up in the UI instead, so the YAML section is ignored.\n\nTo keep publishing states to Zabbix, open the Zabbix integration's **Configure → Publish to Zabbix** and enter the host (your YAML used `{publish_host}`) and the same include/exclude filters. Then remove the `zabbix:` section from `configuration.yaml`."
+    },
+    "publish_host_missing": {
+      "title": "Zabbix host for published states not found",
+      "description": "{title} publishes Home Assistant states to the Zabbix host `{host}`, but that host doesn't exist or the API token's user can't read it. Create the host in Zabbix (with the *Home Assistant* template), or change the host under **Configure → Publish to Zabbix**."
+    },
+    "publish_template_missing": {
+      "title": "Zabbix host is missing the Home Assistant template",
+      "description": "{title} publishes Home Assistant states to the Zabbix host `{host}`, but the host has no `homeassistant.floats_discovery` item, so Zabbix discards the values. Link the *Home Assistant* template to the host."
     }
   },
   "services": {
