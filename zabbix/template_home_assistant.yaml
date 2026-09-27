@@ -16,23 +16,29 @@ zabbix_export:
         Receives Home Assistant state changes sent by the ha-zabbix integration
         (https://github.com/nkcx/ha-zabbix) through the Zabbix trapper protocol.
         Items are created by low-level discovery, one per entity (and per numeric
-        attribute).
+        attribute). Set {$HOMEASSISTANT.ALLOWED_HOSTS} on the host to Home
+        Assistant's IP address.
       vendor:
         name: ha-zabbix
         version: 7.0-0
       groups:
         - name: Templates/Applications
+      macros:
+        - macro: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
+          description: 'IP addresses or DNS names allowed to send Home Assistant states (Home Assistant''s address). Empty: any host on Zabbix 7.x.'
       discovery_rules:
         - uuid: 8583c9e2d3f84f16a138bfeb5c4a3978
           name: 'Numeric states discovery'
           type: TRAP
           key: homeassistant.floats_discovery
+          allowed_hosts: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
           description: 'Numeric states and numeric attributes of Home Assistant entities.'
           item_prototypes:
             - uuid: af66808ad4404660a50318021fdaf735
               name: '{#KEY}'
               type: TRAP
               key: 'homeassistant.float[{#KEY}]'
+              allowed_hosts: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
               history: 1095d
               trends: '0'
               value_type: FLOAT
@@ -47,12 +53,14 @@ zabbix_export:
           name: 'Text states discovery'
           type: TRAP
           key: homeassistant.strings_discovery
+          allowed_hosts: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
           description: 'Non-numeric states, when "Publish non-numeric states" is on.'
           item_prototypes:
             - uuid: da58c276694e4fb6aeb13e3365a8f71a
               name: '{#KEY}'
               type: TRAP
               key: 'homeassistant.string[{#KEY}]'
+              allowed_hosts: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
               history: 90d
               value_type: TEXT
               preprocessing:

@@ -282,7 +282,10 @@ this integration's own entities are never sent back to Zabbix.
    discovery rules for numeric and text states.
 2. **Zabbix: create the host** that receives the states, e.g. *Home Assistant*,
    under **Data collection → Hosts → Create host**. It needs no interface. Link the
-   *Home Assistant* template.
+   *Home Assistant* template, and on the host's **Macros** tab set
+   `{$HOMEASSISTANT.ALLOWED_HOSTS}` to Home Assistant's IP address (it becomes the
+   items' *Allowed hosts*; newer Zabbix versions reject trapper data from other
+   hosts when it's empty).
 3. **Home Assistant:** open the Zabbix integration → **Configure → Publish to
    Zabbix**:
 
@@ -295,8 +298,9 @@ this integration's own entities are never sent back to Zabbix.
 | Include / exclude domains, entities, patterns | Which entities are published. **Without any include filter, every entity is published**, with all its numeric attributes, as in the built-in integration. |
 
 Zabbix must accept trapper connections from Home Assistant: port 10051 must be
-reachable, and the discovered items' *Allowed hosts* (empty by default) must allow
-Home Assistant's address.
+reachable, and `{$HOMEASSISTANT.ALLOWED_HOSTS}` must allow Home Assistant's
+address. If values don't arrive, the Zabbix server log shows lines such as
+`cannot process item "homeassistant.floats_discovery" trap: connection from … rejected`.
 
 The integration checks the host once in a while and raises a repair issue if it
 doesn't exist or lacks the template. Publishing statistics (values sent, processed

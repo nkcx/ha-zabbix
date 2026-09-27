@@ -140,6 +140,10 @@ async def test_publish_round_trip(client: ZabbixClient) -> None:
             "host": host_name,
             "groups": [{"groupid": groups["Zabbix servers"].group_id}],
             "templates": [{"templateid": templates[0]["templateid"]}],
+            # Newer Zabbix only accepts trapper data from localhost by default.
+            "macros": [
+                {"macro": "{$HOMEASSISTANT.ALLOWED_HOSTS}", "value": "0.0.0.0/0,::/0"}
+            ],
         },
     )
     host_id = created["hostids"][0]
