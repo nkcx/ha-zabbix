@@ -324,9 +324,19 @@ async def test_publish_host_checks(
     )
     await hass.config_entries.async_unload(entry_id)
 
+    # A discovery rule, not an item: item.get doesn't return discovery rules.
     fake_zabbix.data["items"].append(
-        _item("29000", "10900", "homeassistant.floats_discovery", "Discovery", type_=2)
+        _item("29001", "10900", "homeassistant.floats_discovery", "Not a rule")
     )
+    assert await hass.config_entries.async_setup(entry_id)
+    await hass.async_block_till_done()
+    assert issue_registry.async_get_issue(
+        DOMAIN, f"publish_template_missing_{entry_id}"
+    )
+    await hass.config_entries.async_unload(entry_id)
+    fake_zabbix.data["discovery_rules"] = [
+        {"itemid": "29000", "hostid": "10900", "key_": "homeassistant.floats_discovery"}
+    ]
     assert await hass.config_entries.async_setup(entry_id)
     await hass.async_block_till_done()
     assert not issue_registry.async_get_issue(

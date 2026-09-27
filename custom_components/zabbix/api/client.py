@@ -532,22 +532,22 @@ class ZabbixClient:
         """Check the host that receives published states.
 
         Returns whether the host exists (and is visible to the token's user) and
-        whether it has the ``homeassistant.floats_discovery`` trapper item.
+        whether it has the ``homeassistant.floats_discovery`` trapper discovery rule.
         """
         hosts = await self.call(
             "host.get", {"output": ["hostid"], "filter": {"host": [host]}}
         )
         if not hosts:
             return False, False
-        items = await self.call(
-            "item.get",
+        rules = await self.call(
+            "discoveryrule.get",
             {
                 "output": ["itemid"],
                 "hostids": [str(hosts[0]["hostid"])],
                 "filter": {"key_": ["homeassistant.floats_discovery"]},
             },
         )
-        return True, bool(items)
+        return True, bool(rules)
 
     async def async_get_maintenances(self, name_prefix: str) -> list[Maintenance]:
         """Return maintenance periods whose name starts with ``name_prefix``."""

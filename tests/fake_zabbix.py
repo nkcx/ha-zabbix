@@ -562,6 +562,7 @@ class FakeZabbix:
             "trigger.get": self._trigger_get,
             "problem.get": self._problem_get,
             "event.acknowledge": self._event_acknowledge,
+            "discoveryrule.get": self._discoveryrule_get,
             "maintenance.get": self._maintenance_get,
             "maintenance.create": self._maintenance_create,
             "maintenance.update": self._maintenance_update,
@@ -743,6 +744,15 @@ class FakeZabbix:
             for triggerid, host_ids in triggers.items()
             if triggerid in params["triggerids"]
         ]
+
+    def _discoveryrule_get(self, params: JsonObject) -> Any:
+        rules = [
+            rule
+            for rule in self.data.get("discovery_rules", [])
+            if rule["hostid"] in params["hostids"]
+            and _matches_filter(rule, params.get("filter", {}))
+        ]
+        return [{"itemid": rule["itemid"]} for rule in rules]
 
     def _problem_get(self, params: JsonObject) -> Any:
         return copy.deepcopy(self.data["problems"])
