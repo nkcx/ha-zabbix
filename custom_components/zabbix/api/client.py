@@ -6,6 +6,7 @@ The client has no Home Assistant dependencies; it only needs an
 
 import asyncio
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import replace
 from enum import IntFlag
 from itertools import count
 import json
@@ -244,18 +245,38 @@ class ZabbixClient:
     async def async_get_host_groups(
         self, group_ids: Iterable[str] | None = None
     ) -> list[HostGroup]:
-        """Return host groups that contain monitored hosts."""
-        params: dict[str, Any] = {
-            "output": ["groupid", "name"],
-            "selectHosts": "count",
-            "sortfield": "name",
-        }
+        """Return host groups that contain monitored hosts.
+
+        ``host_count`` is the number of monitored hosts, i.e. the hosts that
+        become devices (disabled hosts are not counted).
+        """
+        params: dict[str, Any] = {"output": ["groupid", "name"], "sortfield": "name"}
         if group_ids is not None:
             params["groupids"] = ids(set(group_ids))
         else:
             params["with_monitored_hosts"] = True
-        result = await self.call("hostgroup.get", params)
-        return [HostGroup.from_api(group) for group in result]
+        groups = [
+            HostGroup.from_api(group)
+            for group in await self.call("hostgroup.get", params)
+        ]
+        if not groups:
+            return []
+        hosts = await self.call(
+            "host.get",
+            {
+                "output": ["hostid"],
+                "groupids": ids({group.group_id for group in groups}),
+                "monitored_hosts": True,
+                "selectHostGroups": ["groupid"],
+            },
+        )
+        counts: dict[str, int] = {}
+        for host in hosts:
+            for group in host.get("hostgroups") or ():
+                counts[str(group["groupid"])] = counts.get(str(group["groupid"]), 0) + 1
+        return [
+            replace(group, host_count=counts.get(group.group_id, 0)) for group in groups
+        ]
 
     async def async_get_hosts(self, group_ids: Iterable[str]) -> list[Host]:
         """Return monitored hosts in the given groups, with interfaces."""

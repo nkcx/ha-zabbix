@@ -108,10 +108,17 @@ async def test_authenticated_calls_send_bearer_token(
         "Other",
     ]
     assert groups[0].host_count == 3
+    # Disabled hosts don't count (they don't become devices).
+    fake_zabbix.host("10700")["status"] = "1"
+    groups = await client.async_get_host_groups()
+    assert groups[0].host_count == 2
+    assert fake_zabbix.method_calls("host.get")[-1]["monitored_hosts"] is True
     assert fake_zabbix.calls[-1][2] == f"Bearer {TOKEN}"
-    assert fake_zabbix.calls[-1][1]["with_monitored_hosts"] is True
+    assert fake_zabbix.method_calls("hostgroup.get")[-1]["with_monitored_hosts"] is True
     selected = await client.async_get_host_groups(["7"])
     assert [group.group_id for group in selected] == ["7"]
+    fake_zabbix.data["groups"] = []
+    assert await client.async_get_host_groups() == []
 
 
 async def test_bad_token(

@@ -1,6 +1,7 @@
 """Tests for the Zabbix actions."""
 
 from datetime import timedelta
+import re
 
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.core import HomeAssistant
@@ -176,7 +177,11 @@ async def test_maintenance(
         blocking=True,
     )
     params = fake_zabbix.method_calls("maintenance.create")[-1]
-    assert params["name"].startswith("Home Assistant: Database 01, Web server 01 (")
+    assert re.fullmatch(
+        r"Home Assistant: Database 01, Web server 01 "
+        r"\(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\)",
+        params["name"],
+    )
     assert params["hosts"] == [{"hostid": "10500"}, {"hostid": "10501"}]
     assert params["maintenance_type"] == 1
     assert params["description"] == "Patching"

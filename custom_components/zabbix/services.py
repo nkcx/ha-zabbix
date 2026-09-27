@@ -9,6 +9,7 @@ from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
 from .api import (
@@ -158,7 +159,8 @@ async def _start_maintenance(call: ServiceCall) -> None:
                 for host_id in host_ids
             )
         )
-        suffix = f" ({start})"
+        started = dt_util.as_local(dt_util.utc_from_timestamp(start))
+        suffix = f" ({started:%Y-%m-%d %H:%M:%S})"
         name = f"{MAINTENANCE_PREFIX}{names}"
         name = name[: _MAX_MAINTENANCE_NAME - len(suffix)] + suffix
         await _call(
