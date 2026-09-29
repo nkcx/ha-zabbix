@@ -416,6 +416,7 @@ async def test_all_values_rejected(
     fake_zabbix: FakeZabbix,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    hass.states.async_set("sensor.a", "0")
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await _flush(hass)
@@ -423,6 +424,8 @@ async def test_all_values_rejected(
     publisher = config_entry.runtime_data.publisher
     assert publisher is not None
     sender.reject = True
+    last_success = publisher.stats.last_success
+    assert last_success is not None
     hass.states.async_set("sensor.a", "1")
     await _flush(hass)
     hass.states.async_set("sensor.a", "2")
@@ -430,6 +433,7 @@ async def test_all_values_rejected(
     assert publisher.stats.last_error is not None
     assert "rejected all" in publisher.stats.last_error
     assert caplog.text.count("Zabbix rejected all") == 1
+    assert publisher.stats.last_success == last_success
     sender.reject = False
     hass.states.async_set("sensor.a", "3")
     await _flush(hass)

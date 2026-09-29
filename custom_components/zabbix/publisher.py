@@ -334,7 +334,6 @@ class ZabbixPublisher:
             self.stats.sent += len(metrics)
             self.stats.processed += int(response.processed)
             self.stats.failed += int(response.failed)
-            self.stats.last_success = datetime.now().astimezone()
             if int(response.processed) == 0 and int(response.failed) > 0:
                 # The connection works but Zabbix rejected everything.
                 self.stats.last_error = (
@@ -345,6 +344,8 @@ class ZabbixPublisher:
                     _LOGGER.warning("%s", self.stats.last_error)
                 self._rejecting = True
             elif int(response.processed) > 0:
+                # "Success" means Zabbix accepted values, not just the connection.
+                self.stats.last_success = datetime.now().astimezone()
                 self._rejecting = False
                 self.stats.last_error = None
             _LOGGER.debug(
