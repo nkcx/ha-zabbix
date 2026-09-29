@@ -20,6 +20,7 @@ import asyncio
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from functools import partial
 import json
 import logging
 import math
@@ -40,7 +41,7 @@ from homeassistant.core import (
 )
 from homeassistant.helpers import entity_registry as er, state as state_helper
 from homeassistant.helpers.entityfilter import EntityFilter
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from zabbix_utils import AsyncSender, ItemValue
 from zabbix_utils.exceptions import ProcessingError
 
@@ -58,6 +59,11 @@ RETRY_DELAY = 20.0
 # Events older than this are dropped when catching up after an outage.
 MAX_EVENT_AGE = 30 + MAX_TRIES * RETRY_DELAY
 REDISCOVERY_INTERVAL = timedelta(hours=1)
+# Zabbix creates discovered items asynchronously, so values sent together with
+# the discovery data of a new key are rejected. The current states of entities
+# with new keys are sent again after these delays (seconds); the template's
+# "discard unchanged" preprocessing drops the duplicates.
+RESEND_DELAYS = (30, 90, 300)
 
 _SEND_ERRORS = (
     ProcessingError,
@@ -152,6 +158,9 @@ class ZabbixPublisher:
         self._task: asyncio.Task[None] | None = None
         self._rediscover = False
         self._failing = False
+        self._rejecting = False
+        self._new_entities: set[str] = set()
+        self._resend_cancels: set[Callable[[], None]] = set()
 
     def should_publish(self, entity_id: str) -> bool:
         """Return True if the entity's state is published."""
@@ -182,9 +191,10 @@ class ZabbixPublisher:
 
     async def async_stop(self) -> None:
         """Stop publishing and wait for the worker."""
-        for unsubscribe in self._unsubscribe:
+        for unsubscribe in (*self._unsubscribe, *self._resend_cancels):
             unsubscribe()
         self._unsubscribe.clear()
+        self._resend_cancels.clear()
         if self._task is not None:
             self._queue.put_nowait(None)
             try:
@@ -234,6 +244,7 @@ class ZabbixPublisher:
                 for key, value in group.items():
                     if key not in self.keys[item_type]:
                         self.keys[item_type].add(key)
+                        self._new_entities.add(state.entity_id)
                         new_keys = True
                     metrics.append(
                         ItemValue(
@@ -270,6 +281,35 @@ class ZabbixPublisher:
                 metrics = self._discovery() + metrics
             if metrics:
                 await self._async_send(metrics)
+            if self._new_entities:
+                self._schedule_resend(self._new_entities)
+                self._new_entities = set()
+
+    @callback
+    def _schedule_resend(self, entity_ids: set[str]) -> None:
+        """Send these entities' current states again once Zabbix has the items."""
+        pending = frozenset(entity_ids)
+        for delay in RESEND_DELAYS:
+            self._call_later(delay, partial(self._async_resend, pending))
+
+    @callback
+    def _call_later(self, delay: float, action: Callable[[], None]) -> None:
+        cancel: Callable[[], None]
+
+        @callback
+        def _fire(_now: datetime) -> None:
+            self._resend_cancels.discard(cancel)
+            action()
+
+        cancel = async_call_later(self.hass, delay, _fire)
+        self._resend_cancels.add(cancel)
+
+    @callback
+    def _async_resend(self, entity_ids: frozenset[str]) -> None:
+        for entity_id in entity_ids:
+            state = self.hass.states.get(entity_id)
+            if state is not None and self.should_publish(entity_id):
+                self._queue.put_nowait((time.monotonic(), state))
 
     async def _async_send(self, metrics: list[ItemValue]) -> None:
         """Send values, retrying like the built-in integration."""
@@ -295,6 +335,18 @@ class ZabbixPublisher:
             self.stats.processed += int(response.processed)
             self.stats.failed += int(response.failed)
             self.stats.last_success = datetime.now().astimezone()
+            if int(response.processed) == 0 and int(response.failed) > 0:
+                # The connection works but Zabbix rejected everything.
+                self.stats.last_error = (
+                    f"Zabbix rejected all {int(response.failed)} values; check the "
+                    f"host {self.host!r}, its template and allowed hosts"
+                )
+                if not self._rejecting:
+                    _LOGGER.warning("%s", self.stats.last_error)
+                self._rejecting = True
+            elif int(response.processed) > 0:
+                self._rejecting = False
+                self.stats.last_error = None
             _LOGGER.debug(
                 "Sent %d values to Zabbix: %d processed, %d failed",
                 len(metrics),

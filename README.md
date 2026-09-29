@@ -278,11 +278,12 @@ this integration's own entities are never sent back to Zabbix.
 
 1. **Zabbix: import the template.** Download
    [`zabbix/template_home_assistant.yaml`](zabbix/template_home_assistant.yaml) and
-   import it under **Data collection → Templates → Import** (Zabbix 7.0+). It has the
-   discovery rules for numeric and text states.
+   import it under **Data collection → Templates → Import** (Zabbix 7.0+). It adds the
+   template **Home Assistant by Zabbix trapper**, with the discovery rules for numeric
+   and text states.
 2. **Zabbix: create the host** that receives the states, e.g. *Home Assistant*,
    under **Data collection → Hosts → Create host**. It needs no interface. Link the
-   *Home Assistant* template, and on the host's **Macros** tab set
+   *Home Assistant by Zabbix trapper* template, and on the host's **Macros** tab set
    `{$HOMEASSISTANT.ALLOWED_HOSTS}` to Home Assistant's IP address (it becomes the
    items' *Allowed hosts*; newer Zabbix versions reject trapper data from other
    hosts when it's empty).
@@ -303,7 +304,14 @@ address. If values don't arrive, the Zabbix server log shows lines such as
 `cannot process item "homeassistant.floats_discovery" trap: connection from … rejected`.
 
 The integration checks the host once in a while and raises a repair issue if it
-doesn't exist or lacks the template. Publishing statistics (values sent, processed
+doesn't exist or lacks the `homeassistant.floats_discovery` discovery rule (from
+either template).
+
+Right after a new entity or attribute is published, Zabbix still has to create
+its item, so the first values are rejected (they count as `failed` in
+diagnostics). The integration sends the current state again after 30 seconds,
+1.5 minutes and 5 minutes, so new items get their value without waiting for the
+next state change. Publishing statistics (values sent, processed
 and failed, last error) are in the integration's **diagnostics**.
 
 ### Migrating from the built-in integration
@@ -320,8 +328,10 @@ settings under **Publish to Zabbix**:
 | `include` / `exclude` (`domains`, `entities`, `entity_globs`) | The include / exclude fields |
 
 The item keys are the same, so the Zabbix host keeps working. The built-in
-integration's template only covers numeric states; import the new template if you
-publish text states. Remove the `zabbix:` block from `configuration.yaml` afterwards.
+integration's template (*Template Home Assistant*) only covers numeric states. To
+publish text states, unlink it from the host and link *Home Assistant by Zabbix
+trapper* instead; a host can't have both, because they use the same item keys.
+Unlinking **without** clearing keeps the existing items and their history. Remove the `zabbix:` block from `configuration.yaml` afterwards.
 
 ## How data is updated
 

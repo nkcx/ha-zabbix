@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Generator
 from dataclasses import dataclass
+from datetime import timedelta
 import json
 import logging
 from typing import Any, ClassVar
@@ -11,8 +12,12 @@ from unittest.mock import patch
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 from zabbix_utils import ItemValue
 from zabbix_utils.exceptions import ProcessingError
 
@@ -48,6 +53,7 @@ class FakeSender:
         self.port = port
         self.batches: list[list[ItemValue]] = []
         self.errors: list[Exception] = []
+        self.reject = False
         FakeSender.instances.append(self)
 
     async def send(self, items: list[ItemValue]) -> _Response:
@@ -55,6 +61,8 @@ class FakeSender:
         if self.errors:
             raise self.errors.pop(0)
         self.batches.append(list(items))
+        if self.reject:
+            return _Response(processed=0, failed=len(items))
         return _Response(processed=len(items), failed=0)
 
     def sent(self) -> dict[str, str]:
@@ -350,3 +358,80 @@ async def test_no_publisher_by_default(
 ) -> None:
     assert init_integration.runtime_data.publisher is None
     assert FakeSender.instances == []
+
+
+@pytest.mark.parametrize("entry_options", [PUBLISH_OPTIONS])
+async def test_new_keys_are_resent(
+    hass: HomeAssistant, config_entry: MockConfigEntry, fake_zabbix: FakeZabbix
+) -> None:
+    """Values sent with new discovery data are re-sent once Zabbix has the items."""
+    hass.states.async_set("sensor.temperature", "21.5")
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await _flush(hass)
+    sender = _sender()
+    assert sender.sent()["homeassistant.float[sensor.temperature]"] == "21.5"
+
+    for delay in (31, 91, 301):
+        sender.batches.clear()
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=delay))
+        await _flush(hass)
+        assert sender.sent() == {"homeassistant.float[sensor.temperature]": "21.5"}
+
+    # Only the three planned re-sends.
+    sender.batches.clear()
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=600))
+    await _flush(hass)
+    assert "homeassistant.float[sensor.temperature]" not in sender.sent()
+
+    # Changes to known keys aren't re-sent.
+    hass.states.async_set("sensor.temperature", "23")
+    await _flush(hass)
+    sender.batches.clear()
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=700))
+    await _flush(hass)
+    assert sender.batches == []
+    await hass.config_entries.async_unload(config_entry.entry_id)
+
+
+@pytest.mark.parametrize("entry_options", [PUBLISH_OPTIONS])
+async def test_pending_resends_are_cancelled_on_unload(
+    hass: HomeAssistant, config_entry: MockConfigEntry, fake_zabbix: FakeZabbix
+) -> None:
+    hass.states.async_set("sensor.temperature", "21.5")
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await _flush(hass)
+    publisher = config_entry.runtime_data.publisher
+    assert publisher is not None
+    assert publisher._resend_cancels
+    await hass.config_entries.async_unload(config_entry.entry_id)
+    assert not publisher._resend_cancels
+
+
+@pytest.mark.parametrize("entry_options", [PUBLISH_OPTIONS])
+async def test_all_values_rejected(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    fake_zabbix: FakeZabbix,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await _flush(hass)
+    sender = _sender()
+    publisher = config_entry.runtime_data.publisher
+    assert publisher is not None
+    sender.reject = True
+    hass.states.async_set("sensor.a", "1")
+    await _flush(hass)
+    hass.states.async_set("sensor.a", "2")
+    await _flush(hass)
+    assert publisher.stats.last_error is not None
+    assert "rejected all" in publisher.stats.last_error
+    assert caplog.text.count("Zabbix rejected all") == 1
+    sender.reject = False
+    hass.states.async_set("sensor.a", "3")
+    await _flush(hass)
+    assert publisher.stats.last_error is None
+    await hass.config_entries.async_unload(config_entry.entry_id)

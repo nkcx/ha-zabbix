@@ -111,7 +111,7 @@
       },
       "publish": {
         "title": "Publish to Zabbix",
-        "description": "Send Home Assistant state changes to a Zabbix host, like Home Assistant's built-in Zabbix integration (same item keys, so existing hosts and templates keep working). Create the host in Zabbix first and link the *Home Assistant* template from the documentation.\n\nLeave **Zabbix host** empty to turn publishing off. With no include filters, **every** entity is published, including its numeric attributes.",
+        "description": "Send Home Assistant state changes to a Zabbix host, like Home Assistant's built-in Zabbix integration (same item keys, so existing hosts and templates keep working). Create the host in Zabbix first and link the *Home Assistant by Zabbix trapper* template from the documentation.\n\nLeave **Zabbix host** empty to turn publishing off. With no include filters, **every** entity is published, including its numeric attributes.",
         "data": {
           "publish_host": "Zabbix host",
           "publish_server": "Zabbix server or proxy",
@@ -369,11 +369,11 @@
     },
     "publish_host_missing": {
       "title": "Zabbix host for published states not found",
-      "description": "{title} publishes Home Assistant states to the Zabbix host `{host}`, but that host doesn't exist or the API token's user can't read it. Create the host in Zabbix (with the *Home Assistant* template), or change the host under **Configure → Publish to Zabbix**."
+      "description": "{title} publishes Home Assistant states to the Zabbix host `{host}`, but that host doesn't exist or the API token's user can't read it. Create the host in Zabbix (with the *Home Assistant by Zabbix trapper* template), or change the host under **Configure → Publish to Zabbix**."
     },
     "publish_template_missing": {
       "title": "Zabbix host is missing the Home Assistant template",
-      "description": "{title} publishes Home Assistant states to the Zabbix host `{host}`, but the host has no `homeassistant.floats_discovery` item, so Zabbix discards the values. Link the *Home Assistant* template to the host."
+      "description": "{title} publishes Home Assistant states to the Zabbix host `{host}`, but the host has no `homeassistant.floats_discovery` discovery rule, so Zabbix discards the values. Link the *Home Assistant by Zabbix trapper* template to the host."
     }
   },
   "services": {

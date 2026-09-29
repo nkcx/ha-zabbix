@@ -1,6 +1,8 @@
 # Zabbix 7.0+ template for publishing Home Assistant states to Zabbix.
 # Import in Zabbix under Data collection -> Templates -> Import, then link it to
 # the host configured in the integration (Configure -> Publish to Zabbix).
+# The template's technical name is unique on purpose: a host can't have the same
+# name as a template, and importing must never update an unrelated template.
 # Item keys are the same as those of Home Assistant's built-in Zabbix
 # integration, so the host keeps its existing items and history.
 zabbix_export:
@@ -9,9 +11,9 @@ zabbix_export:
     - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
       name: Templates/Applications
   templates:
-    - uuid: 533f35c9caac409188e7ea97976e62c6
-      template: 'Home Assistant'
-      name: 'Home Assistant'
+    - uuid: 7e874ce7eedc4852bcf1ef1e77550af4
+      template: 'Home Assistant by Zabbix trapper'
+      name: 'Home Assistant by Zabbix trapper'
       description: |
         Receives Home Assistant state changes sent by the ha-zabbix integration
         (https://github.com/nkcx/ha-zabbix) through the Zabbix trapper protocol.
@@ -20,21 +22,21 @@ zabbix_export:
         Assistant's IP address.
       vendor:
         name: ha-zabbix
-        version: 7.0-0
+        version: 7.0-1
       groups:
         - name: Templates/Applications
       macros:
         - macro: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
           description: 'IP addresses or DNS names allowed to send Home Assistant states (Home Assistant''s address). Empty: any host on Zabbix 7.x.'
       discovery_rules:
-        - uuid: 8583c9e2d3f84f16a138bfeb5c4a3978
+        - uuid: 4933da0731254fa2b47e89f254eb11d7
           name: 'Numeric states discovery'
           type: TRAP
           key: homeassistant.floats_discovery
           allowed_hosts: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
           description: 'Numeric states and numeric attributes of Home Assistant entities.'
           item_prototypes:
-            - uuid: af66808ad4404660a50318021fdaf735
+            - uuid: 8e0a1773167347078c20533529e19319
               name: '{#KEY}'
               type: TRAP
               key: 'homeassistant.float[{#KEY}]'
@@ -49,14 +51,14 @@ zabbix_export:
               tags:
                 - tag: component
                   value: homeassistant
-        - uuid: d4e38bbab70646cda4a5a8a3293a2cc2
+        - uuid: 1291242e51c04f48863893eafe1693e2
           name: 'Text states discovery'
           type: TRAP
           key: homeassistant.strings_discovery
           allowed_hosts: '{$HOMEASSISTANT.ALLOWED_HOSTS}'
           description: 'Non-numeric states, when "Publish non-numeric states" is on.'
           item_prototypes:
-            - uuid: da58c276694e4fb6aeb13e3365a8f71a
+            - uuid: 93c0cd0fc33c4762a0644e230f1767f4
               name: '{#KEY}'
               type: TRAP
               key: 'homeassistant.string[{#KEY}]'
