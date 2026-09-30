@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 from typing import Any
+from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_REAUTH
@@ -154,7 +155,15 @@ async def test_removed_host_is_cleaned_up(
     fake_zabbix.data["hosts"] = [
         host for host in fake_zabbix.data["hosts"] if host["hostid"] != "10600"
     ]
-    await _refresh(hass, init_integration)
+    update_device = dr.DeviceRegistry.async_update_device
+
+    def no_deprecated_removal(self: Any, device_id: str, **kwargs: Any) -> Any:
+        # remove_config_entry_id is deprecated (breaks in HA 2027.8, #6).
+        assert "remove_config_entry_id" not in kwargs
+        return update_device(self, device_id, **kwargs)
+
+    with patch.object(dr.DeviceRegistry, "async_update_device", no_deprecated_removal):
+        await _refresh(hass, init_integration)
     assert device_registry.async_get_device_by_identifier(identifier, entry_id) is None
     assert entity_registry.async_get("binary_sensor.switch_01_problem") is None
 

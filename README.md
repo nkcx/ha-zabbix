@@ -268,7 +268,11 @@ what polling shows; polling keeps running as a safety net.
      [ha-zabbix-alerts README](https://github.com/nkcx/ha-zabbix-alerts#manual-setup).
 
 The URL must be reachable from the Zabbix server. Requests without the right secret
-are rejected (HTTP 401) and counted in diagnostics. The diagnostic sensor **Last
+are rejected (HTTP 401) and counted in diagnostics. Alerts that arrive within 2
+seconds of each other share one refresh.
+
+Turning alerts off keeps the URL and secret, so turning them on again works with an
+existing Zabbix setup; delete and re-add the integration to get new ones. The diagnostic sensor **Last
 alert** on the Zabbix device shows when the last alert arrived.
 
 ## Publishing Home Assistant states to Zabbix

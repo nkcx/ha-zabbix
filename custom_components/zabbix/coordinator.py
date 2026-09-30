@@ -18,6 +18,7 @@ from homeassistant.helpers import (
     entity_registry as er,
     issue_registry as ir,
 )
+from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .alerts import AlertReceiver
@@ -75,6 +76,7 @@ from .unique_ids import (
 type ZabbixConfigEntry = ConfigEntry[ZabbixCoordinator]
 
 ISSUE_MISSING_GROUPS = "missing_groups"
+REQUEST_REFRESH_COOLDOWN = 2.0
 ISSUE_PUBLISH_HOST = "publish_host_missing"
 ISSUE_PUBLISH_TEMPLATE = "publish_template_missing"
 
@@ -185,6 +187,11 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
             name=DOMAIN,
             update_interval=timedelta(
                 seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            ),
+            # Alerts and actions request refreshes; the default 10 s cooldown
+            # would hold back alerts that arrive close together.
+            request_refresh_debouncer=Debouncer(
+                hass, LOGGER, cooldown=REQUEST_REFRESH_COOLDOWN, immediate=True
             ),
         )
         self.client = client
@@ -555,9 +562,7 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
         for device in dr.async_entries_for_config_entry(device_registry, entry_id):
             if not device.identifiers & keep_devices:
                 LOGGER.debug("Removing stale device %s", device.name)
-                device_registry.async_update_device(
-                    device.id, remove_config_entry_id=entry_id
-                )
+                device_registry.async_remove_device(device.id)
         entity_registry = er.async_get(self.hass)
         expected = self.expected_unique_ids(data)
         for entity in er.async_entries_for_config_entry(entity_registry, entry_id):
