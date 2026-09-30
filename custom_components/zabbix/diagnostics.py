@@ -8,11 +8,12 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
+from .alerts import DATA_ALERT_SECRET, DATA_ALERT_WEBHOOK_ID
 from .const import CONF_API_TOKEN
 from .coordinator import ZabbixConfigEntry
 from .unique_ids import host_device_identifier
 
-TO_REDACT = {CONF_API_TOKEN}
+TO_REDACT = {CONF_API_TOKEN, DATA_ALERT_SECRET, DATA_ALERT_WEBHOOK_ID}
 
 
 async def async_get_config_entry_diagnostics(
@@ -54,6 +55,7 @@ async def async_get_config_entry_diagnostics(
             "shown": len(data.shown_problems()),
         },
         "last_update_success": coordinator.last_update_success,
+        "alerts": coordinator.alerts.diagnostics() if coordinator.alerts else None,
         "publisher": dict(coordinator.publisher.diagnostics())
         if coordinator.publisher
         else None,

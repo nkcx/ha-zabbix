@@ -220,9 +220,9 @@ automation:
           flash: long
 ```
 
-Polling detects changes, so events arrive within one update interval. Changes that
-come and go between two polls are not seen. Real-time delivery through Zabbix
-alerting is planned.
+Polling detects changes, so events arrive within one update interval; with
+[real-time alerts](#real-time-alerts-zabbix--home-assistant) they arrive within
+seconds. Changes that come and go between two refreshes are not seen.
 
 ## Actions
 
@@ -247,6 +247,29 @@ data:
   event_id: "{{ trigger.event.data.event_id }}"
   message: Acknowledged from Home Assistant
 ```
+
+## Real-time alerts (Zabbix → Home Assistant)
+
+By default the integration polls Zabbix (every 30 seconds). With **alerts** turned
+on, Zabbix notifies Home Assistant the moment a problem starts, resolves or is
+updated, and the integration refreshes right away: problem events and entities
+update within seconds. The data still comes from the Zabbix API, so it's exactly
+what polling shows; polling keeps running as a safety net.
+
+1. **Home Assistant:** Zabbix integration → **Configure → Alerts** → turn on
+   *Receive Zabbix alerts*. The page shows the webhook **URL** and a **secret**.
+2. **Zabbix:** set up a webhook media type, a user and a trigger action that call
+   that URL with the secret in the `X-Zabbix-Alert-Secret` header. Either:
+   - install the companion integration
+     [**ha-zabbix-alerts**](https://github.com/nkcx/ha-zabbix-alerts), which creates
+     and maintains these objects for you (it needs a Zabbix Super admin API token),
+     and removes them again when you remove it; or
+   - set them up by hand as described in the
+     [ha-zabbix-alerts README](https://github.com/nkcx/ha-zabbix-alerts#manual-setup).
+
+The URL must be reachable from the Zabbix server. Requests without the right secret
+are rejected (HTTP 401) and counted in diagnostics. The diagnostic sensor **Last
+alert** on the Zabbix device shows when the last alert arrived.
 
 ## Publishing Home Assistant states to Zabbix
 
@@ -345,7 +368,8 @@ Unlinking **without** clearing keeps the existing items and their history. Remov
 
 - Published states are sent to one Zabbix host; TLS (PSK) for the trapper
   connection is not supported yet.
-- Events are detected by polling, not delivered in real time.
+- Without [real-time alerts](#real-time-alerts-zabbix--home-assistant), events are
+  detected by polling.
 - Zabbix 6.x is not supported (it uses a different API authentication).
 - Item names are Zabbix's names, which often start with a template prefix such as
   `Linux:`.

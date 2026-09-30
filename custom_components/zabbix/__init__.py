@@ -13,9 +13,11 @@ import voluptuous as vol
 from yarl import URL
 from zabbix_utils import AsyncSender
 
+from .alerts import DATA_ALERT_SECRET, DATA_ALERT_WEBHOOK_ID, AlertReceiver
 from .api import ZabbixClient
 from .config_flow import PUBLISH_FILTER_KEYS
 from .const import (
+    CONF_ALERTS,
     CONF_API_TOKEN,
     CONF_PUBLISH_HOST,
     CONF_PUBLISH_PORT,
@@ -82,6 +84,19 @@ def create_publisher(
     )
 
 
+def create_alert_receiver(
+    hass: HomeAssistant, entry: ZabbixConfigEntry, coordinator: ZabbixCoordinator
+) -> AlertReceiver | None:
+    """Return the alert receiver if alerts are turned on."""
+    webhook_id = entry.data.get(DATA_ALERT_WEBHOOK_ID)
+    secret = entry.data.get(DATA_ALERT_SECRET)
+    if not entry.options.get(CONF_ALERTS) or not webhook_id or not secret:
+        return None
+    return AlertReceiver(
+        hass, entry.title, webhook_id, secret, coordinator.async_request_refresh
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ZabbixConfigEntry) -> bool:
     """Set up Zabbix from a config entry."""
     client = ZabbixClient(
@@ -91,9 +106,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ZabbixConfigEntry) -> bo
     )
     coordinator = ZabbixCoordinator(hass, entry, client)
     coordinator.publisher = create_publisher(hass, entry)
+    coordinator.alerts = create_alert_receiver(hass, entry, coordinator)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if (alerts := coordinator.alerts) is not None:
+        alerts.async_register()
+        entry.async_on_unload(alerts.async_unregister)
 
     if (publisher := coordinator.publisher) is not None:
 

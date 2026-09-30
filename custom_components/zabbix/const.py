@@ -19,6 +19,7 @@ CONF_PUBLISH_HOST: Final = "publish_host"
 CONF_PUBLISH_SERVER: Final = "publish_server"
 CONF_PUBLISH_PORT: Final = "publish_port"
 CONF_PUBLISH_STRINGS: Final = "publish_strings"
+CONF_ALERTS: Final = "alerts"
 
 DEFAULT_PUBLISH_PORT: Final = 10051
 
@@ -88,6 +89,7 @@ KIND_PROBLEM_EVENTS: Final = "problem_events"
 KIND_AVAILABILITY_PREFIX: Final = "availability_"
 KIND_PROBLEMS: Final = "problems"
 KIND_VERSION: Final = "version"
+KIND_LAST_ALERT: Final = "last_alert"
 KIND_HOSTS: Final = "hosts"
 KIND_ITEMS: Final = "items"
 KIND_UNSUPPORTED_ITEMS: Final = "unsupported_items"

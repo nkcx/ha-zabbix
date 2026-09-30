@@ -39,6 +39,13 @@ from homeassistant.helpers.selector import (
 import voluptuous as vol
 from yarl import URL
 
+from .alerts import (
+    DATA_ALERT_SECRET,
+    DATA_ALERT_WEBHOOK_ID,
+    SECRET_HEADER,
+    alert_url,
+    new_alert_credentials,
+)
 from .api import (
     HostGroup,
     ZabbixApiError,
@@ -52,6 +59,7 @@ from .api import (
     parse_version,
 )
 from .const import (
+    CONF_ALERTS,
     CONF_API_TOKEN,
     CONF_CONFIRM,
     CONF_GROUP_IDS,
@@ -432,6 +440,7 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
         """Initialize the options flow."""
         self._client: ZabbixClient | None = None
         self._options: dict[str, Any] = {}
+        self._alert_credentials: dict[str, str] | None = None
 
     def _save(self, options: Mapping[str, Any]) -> ConfigFlowResult:
         """Save options, keeping those of the other menu entry."""
@@ -442,7 +451,7 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         """Show the options menu."""
         return self.async_show_menu(
-            step_id="init", menu_options=["monitoring", "publish"]
+            step_id="init", menu_options=["monitoring", "publish", "alerts"]
         )
 
     async def async_step_monitoring(
@@ -524,6 +533,41 @@ class ZabbixOptionsFlow(OptionsFlowWithReload):
             data_schema=CONFIRM_SCHEMA,
             description_placeholders=placeholders,
             errors=errors,
+        )
+
+    async def async_step_alerts(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Turn the alert receiver (Zabbix → Home Assistant webhook) on or off."""
+        entry = self.config_entry
+        credentials = {
+            key: entry.data[key]
+            for key in (DATA_ALERT_WEBHOOK_ID, DATA_ALERT_SECRET)
+            if key in entry.data
+        }
+        if len(credentials) < 2:
+            credentials = self._alert_credentials or new_alert_credentials()
+            self._alert_credentials = credentials
+        if user_input is not None:
+            if user_input[CONF_ALERTS]:
+                self.hass.config_entries.async_update_entry(
+                    entry, data={**entry.data, **credentials}
+                )
+            return self._save({CONF_ALERTS: user_input[CONF_ALERTS]})
+        return self.async_show_form(
+            step_id="alerts",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_ALERTS, default=entry.options.get(CONF_ALERTS, False)
+                    ): BooleanSelector()
+                }
+            ),
+            description_placeholders={
+                "url": alert_url(self.hass, credentials[DATA_ALERT_WEBHOOK_ID]),
+                "secret": credentials[DATA_ALERT_SECRET],
+                "header": SECRET_HEADER,
+            },
         )
 
     async def async_step_publish(

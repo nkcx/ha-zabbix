@@ -3,23 +3,41 @@
     "binary_sensor": {
       "problem": {
         "default": "mdi:alert-circle",
-        "state": { "off": "mdi:check-circle" }
+        "state": {
+          "off": "mdi:check-circle"
+        }
       },
       "maintenance": {
         "default": "mdi:wrench-clock",
-        "state": { "off": "mdi:wrench-clock-outline" }
+        "state": {
+          "off": "mdi:wrench-clock-outline"
+        }
       }
     },
     "event": {
-      "problem_events": { "default": "mdi:alert-decagram" }
+      "problem_events": {
+        "default": "mdi:alert-decagram"
+      }
     },
     "sensor": {
-      "problems": { "default": "mdi:alert-circle" },
-      "version": { "default": "mdi:information-outline" },
-      "hosts": { "default": "mdi:server-network" },
-      "items": { "default": "mdi:format-list-checks" },
-      "unsupported_items": { "default": "mdi:help-circle-outline" },
-      "triggers": { "default": "mdi:flash" },
+      "problems": {
+        "default": "mdi:alert-circle"
+      },
+      "version": {
+        "default": "mdi:information-outline"
+      },
+      "hosts": {
+        "default": "mdi:server-network"
+      },
+      "items": {
+        "default": "mdi:format-list-checks"
+      },
+      "unsupported_items": {
+        "default": "mdi:help-circle-outline"
+      },
+      "triggers": {
+        "default": "mdi:flash"
+      },
       "highest_severity": {
         "default": "mdi:alert",
         "state": {
@@ -63,14 +81,27 @@
           "unknown": "mdi:lan-pending",
           "mixed": "mdi:lan-pending"
         }
+      },
+      "last_alert": {
+        "default": "mdi:bell-ring-outline"
       }
     }
   },
   "services": {
-    "acknowledge_problem": { "service": "mdi:check" },
-    "unacknowledge_problem": { "service": "mdi:undo" },
-    "close_problem": { "service": "mdi:close-circle" },
-    "start_maintenance": { "service": "mdi:wrench-clock" },
-    "end_maintenance": { "service": "mdi:wrench-check" }
+    "acknowledge_problem": {
+      "service": "mdi:check"
+    },
+    "unacknowledge_problem": {
+      "service": "mdi:undo"
+    },
+    "close_problem": {
+      "service": "mdi:close-circle"
+    },
+    "start_maintenance": {
+      "service": "mdi:wrench-clock"
+    },
+    "end_maintenance": {
+      "service": "mdi:wrench-check"
+    }
   }
 }

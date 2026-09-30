@@ -145,6 +145,7 @@
 # ---
 # name: test_entry_diagnostics
   dict({
+    'alerts': None,
     'entry': dict({
       'data': dict({
         'api_token': '**REDACTED**',

@@ -25,6 +25,7 @@ from .const import (
     KIND_HIGHEST_SEVERITY,
     KIND_HOSTS,
     KIND_ITEMS,
+    KIND_LAST_ALERT,
     KIND_PROBLEMS,
     KIND_TRIGGERS,
     KIND_UNSUPPORTED_ITEMS,
@@ -147,6 +148,10 @@ async def async_setup_entry(
                 ZabbixServiceSensor, coordinator, VERSION_SENSOR
             ),
         }
+        if coordinator.alerts is not None:
+            result[service_unique_id(entry_id, KIND_LAST_ALERT)] = partial(
+                ZabbixLastAlertSensor, coordinator
+            )
         if data.server_counts is not None:
             for description in COUNT_SENSORS:
                 result[service_unique_id(entry_id, description.key)] = partial(
@@ -189,6 +194,34 @@ class ZabbixServiceSensor(ZabbixServiceEntity, SensorEntity):
     def native_value(self) -> StateType:
         """Return the value."""
         return self.entity_description.value_fn(self.coordinator.data)
+
+
+class ZabbixLastAlertSensor(ZabbixServiceEntity, SensorEntity):
+    """When the last Zabbix alert arrived through the webhook."""
+
+    _attr_translation_key = KIND_LAST_ALERT
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: ZabbixCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, KIND_LAST_ALERT)
+
+    @override
+    async def async_added_to_hass(self) -> None:
+        """Update as soon as an alert arrives, before the refresh finishes."""
+        await super().async_added_to_hass()
+        assert self.coordinator.alerts is not None
+        self.async_on_remove(
+            self.coordinator.alerts.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    @override
+    def native_value(self) -> datetime | None:
+        """Return the time of the last alert."""
+        assert self.coordinator.alerts is not None
+        return self.coordinator.alerts.stats.last_received
 
 
 class ZabbixProblemsSensor(ZabbixServiceEntity, SensorEntity):

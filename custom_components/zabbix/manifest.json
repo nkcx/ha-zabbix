@@ -5,6 +5,9 @@
     "@nkcx"
   ],
   "config_flow": true,
+  "dependencies": [
+    "webhook"
+  ],
   "documentation": "https://github.com/nkcx/ha-zabbix",
   "integration_type": "hub",
   "iot_class": "local_polling",

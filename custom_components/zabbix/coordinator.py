@@ -20,6 +20,7 @@ from homeassistant.helpers import (
 )
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .alerts import AlertReceiver
 from .api import (
     Host,
     Item,
@@ -45,6 +46,7 @@ from .const import (
     EVENT_PROBLEM,
     KIND_AVAILABILITY_PREFIX,
     KIND_HIGHEST_SEVERITY,
+    KIND_LAST_ALERT,
     KIND_MAINTENANCE,
     KIND_PROBLEM,
     KIND_PROBLEM_EVENTS,
@@ -198,6 +200,7 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
         self._server_counts: ServerCounts | None = None
         self._trigger_hosts: dict[str, tuple[str, ...]] = {}
         self.publisher: ZabbixPublisher | None = None
+        self.alerts: AlertReceiver | None = None
 
     @property
     def group_ids(self) -> list[str]:
@@ -515,6 +518,8 @@ class ZabbixCoordinator(DataUpdateCoordinator[ZabbixData]):
             service_unique_id(entry_id, kind)
             for kind in (KIND_PROBLEMS, KIND_VERSION, KIND_PROBLEM_EVENTS)
         }
+        if self.alerts is not None:
+            expected.add(service_unique_id(entry_id, KIND_LAST_ALERT))
         if data.server_counts is not None:
             expected.update(
                 service_unique_id(entry_id, kind) for kind in SERVICE_COUNT_KINDS

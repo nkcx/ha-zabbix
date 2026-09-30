@@ -91,7 +91,8 @@
         "title": "Zabbix options",
         "menu_options": {
           "monitoring": "Monitoring (Zabbix → Home Assistant)",
-          "publish": "Publish to Zabbix (Home Assistant → Zabbix)"
+          "publish": "Publish to Zabbix (Home Assistant → Zabbix)",
+          "alerts": "Alerts (Zabbix → Home Assistant, real time)"
         }
       },
       "monitoring": {
@@ -131,6 +132,13 @@
           "publish_strings": "Also send states that aren't numbers, as text items.",
           "include_entity_globs": "Patterns such as sensor.*_temperature.",
           "exclude_entity_globs": "Patterns such as sensor.*_battery."
+        }
+      },
+      "alerts": {
+        "title": "Alerts",
+        "description": "Let Zabbix notify Home Assistant the moment a problem starts, resolves or is updated. Home Assistant then refreshes right away, so problem events and entities update within seconds instead of on the next poll.\n\nZabbix needs a webhook media type and a trigger action that call this address. The **Zabbix alerts** companion integration (ha-zabbix-alerts) sets that up and keeps it up to date, or follow the README to set it up by hand:\n\n- URL: `{url}`\n- Header `{header}`: `{secret}`\n\nThe address must be reachable from the Zabbix server.",
+        "data": {
+          "alerts": "Receive Zabbix alerts"
         }
       }
     },
@@ -326,6 +334,9 @@
             "name": "Interfaces"
           }
         }
+      },
+      "last_alert": {
+        "name": "Last alert"
       }
     }
   },
